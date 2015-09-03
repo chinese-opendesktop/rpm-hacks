@@ -3,7 +3,7 @@ Name
 rpm-hacks
 
 
-Discription
+Description
 -----------
   These are several useful shell scripts for making or modifying RPM packages.
 The 'deb2spec' produce a spec file from a .deb, Debian package file, and the
@@ -26,8 +26,7 @@ Released under MIT License.
 
 Authors
 ------
-deb2spec: 	Robert Wei
-rpm2spec:	Aleksey Barabanov, Kevin Chen, Robert Wei
+deb2spec: 	Robert Wei, Wei-Lun Chao
+rpm2spec:	Aleksey Barabanov, Kevin Chen, Robert Wei, Wei-Lun Chao
 rpmjail:	Wei-Lun Chao
 b64shar:	Wei-Lun Chao
-

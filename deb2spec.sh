@@ -3,7 +3,7 @@
 # Deb To Spec: Automatic spec reconstructor
 #              Modified from rpm2spec.sh (http://www.barabanov.ru/proj/rpm2spec)
 # Ver. 0.0.3, Dec 2012, Robert Wei <robert.wei@ossii.com.tw>
-# 
+# Ver. 0.0.4, Sep 2015, Wei-Lun Chao <bluebat@member.fsf.org>
 #
 _PACKAGE="$1"
 
@@ -44,10 +44,14 @@ echo 'Summary:' $( $_debQ'${Description}' $_PACKAGE | head -n 1)
 echo 'Version:' $Version
 echo 'Release:' $( sed 's/\.[a-zA-Z].*//' <<< $Release )%{?dist}
 echo 'Group:' $( $_debQ'${Section}' $_PACKAGE )
-echo 'URL:' $( $_debQ'${Homepage}' $_PACKAGE )
+echo 'License: Free Software'
+URL=$( $_debQ'${Homepage}' $_PACKAGE )
+if [ -n "$URL" ] ; then
+  echo 'URL:' $URL
+fi
 echo 'Source0: http://downloads.sourceforge.net/%{name}/%{name}-%{version}.tar.gz'
 BuildArch=$( $_debQ'${Architecture}' $_PACKAGE )
-if [ "$BuildArch" == "all" ] ; then
+if [ "$BuildArch" = "all" ] ; then
   echo 'BuildArch: noarch'
 fi
 
@@ -109,7 +113,7 @@ Files=$( dpkg-deb -c "$_PACKAGE" | while read x
 grep "\.desktop *$" <<< "$Files" > /dev/null && BuildRequires="$BuildRequires\ndesktop-file-utils"
 
 for x in $( echo -e "$BuildRequires" | sort -u ) ; do
-  echo 'BuildRequires: ' $x
+  echo 'BuildRequires:' $x
 done
 for x in $UnonReqs ; do
   echo '#Requires:' $x
@@ -121,7 +125,7 @@ if [ "${Conflicts%% }" != "" ] ; then
 fi
 
 Provides=$( $_debQ'${Provides}' $_PACKAGE )
-if [ "$Provides" != "" ] ; then
+if [ -n "$Provides" ] ; then
   for Foo in $Provides ; do
     echo 'Provides:' $Foo
   done
@@ -129,7 +133,7 @@ fi
 
 echo
 echo '%description'
-$_debQ'${Description}' $_PACKAGE | tail -n +2
+$_debQ'${Description}' $_PACKAGE | tail -n +2 | sed 's/^ //'
 echo
 echo
 echo '%prep'
@@ -151,25 +155,25 @@ declare -i lx ly=1
 y=""
 for x in $Files ; do
   lx=${#x}
-  if [ "$y" != "" ] && [ "${x:0:$ly}" != "$y" ] ; then
-    if [ "$Files2" == "" ] ; then Files2="$y"
+  if [ -n "$y" ] && [ "${x:0:$ly}" != "$y" ] ; then
+    if [ -z "$Files2" ] ; then Files2="$y"
     else Files2="${Files2} ${y}" ; fi
   fi
   y=""
     
-  if [ "${x:$(( $lx - 1 )):1}" == "/" ] ; then
+  if [ "${x:$(( $lx - 1 )):1}" = "/" ] ; then
     if  [ "${x#*/${Name}/}" != "$x" ] \
      || [ "${x#*/${Name}-}" != "$x" ] \
      || [ "${x#*/${Name}_}" != "$x" ] \
      || [ "${x#*/${Name}.}" != "$x" ] ; then
-      if [ "$Files2" == "" ] ; then Files2="$x"
+      if [ -z "$Files2" ] ; then Files2="$x"
       else Files2="${Files2} ${x}" ; fi
     else
       y=$x
       ly=$lx
     fi
   else
-    if [ "$Files2" == "" ] ; then Files2="$x"
+    if [ -z "$Files2" ] ; then Files2="$x"
     else Files2="${Files2} ${x}" ; fi
   fi
 done
@@ -177,9 +181,9 @@ done
 y="*" ; ly=1
 for x in $Files2 ; do
   lx=${#x}
-  if   [ "${y:$(($ly-1)):1}" != "/" ] || [ "${x:0:$ly}" != "$y" ] ; then
+  if [ "${y:$(($ly-1)):1}" != "/" -o "${x:0:$ly}" != "$y" ] ; then
 
-    if [ "$y" == "*" ] ; then Files="$x"
+    if [ "$y" = "*" ] ; then Files="$x"
     else Files="${Files}\n${x}" ; fi
     ly=$lx
     y=$x
@@ -189,11 +193,11 @@ done
 
 Files=$( echo -e "$Files" | sed -e "s|/$Name/.*|/$Name/|g" -e "s|/$Name-$Version/.*|/$Name-$Version/|g" -e "s|/$Name-$Version-$Release/.*|/$Name-$Version-$Release/|g" -e 's|^/usr/share/locale/[^/]*/LC_MESSAGES/|/usr/share/locale/*/LC_MESSAGES/|g' -e 's|^/usr/share/man/[^/]*/man|/usr/share/man/*/man|g' | sort -u )
 
-Files=$( sed -e 's|^/usr/share/man|%{_mandir}|g' -e 's|^/usr/share/applications|%{_desktopdir}|g' -e 's|^/usr/share/icons|%{_iconsdir}|g' <<< "$Files" )
+Files=$( sed -e 's|^/usr/share/man|%{_mandir}|g' -e 's|^/usr/share/info|%{_infodir}|g' <<< "$Files" )
 
 Files=$( sed -e 's|^/usr/bin|%{_bindir}|g' -e 's|^/usr/sbin|%{_sbindir}|g' -e 's|^/usr/include|%{_includedir}|g' -e 's|^/usr/share|%{_datadir}|g' -e 's|^/usr/lib64|%{_libdir}|g' -e "s|$Version-$Release|%{version}-%{release}|g" <<< "$Files" )
 
-if [ "$BuildArch" != "noarch" ] && [ "$BuildArch" != "x86_64" ] ; then
+if [ "$BuildArch" != "noarch" -a "$BuildArch" != "x86_64" ] ; then
   Files=$( sed -e 's|^/usr/lib|%{_libdir}|g' <<< "$Files" )
 fi
 
@@ -207,6 +211,3 @@ echo
 echo '%changelog'
 echo '* '$( date '+%a %b %d %Y' ) "$USER <$USER@$HOSTNAME>"
 echo '- Regenerated spec using deb2spec'
-
-exit 0
-

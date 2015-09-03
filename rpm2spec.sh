@@ -4,6 +4,7 @@
 # Ver. 0.0.1, May 2004, Aleksey Barabanov <alekseybb@mail.ru> http://www.barabanov.ru/proj/rpm2spec
 # Ver. 0.0.2, Aug 2012, Kevin Chen <kevin.chen@ossii.com.tw>, Wei-Lun Chao <william.chao@ossii.com.tw>
 # Ver. 0.0.3, Dec 2012, Robert Wei <robert.wei@ossii.com.tw>
+# Ver. 0.0.4, Sep 2015, Wei-Lun Chao <bluebat@member.fsf.org>
 #
 _PACKAGE="$1"
 
@@ -41,7 +42,7 @@ echo 'Release:' $( sed 's/\.[a-zA-Z].*//' <<< $Release )%{?dist}
 echo 'Group:' $( $_RPMQ --queryformat=%{group} )
 echo 'License:' $( $_RPMQ --queryformat=%{license} )
 echo 'URL:' $( $_RPMQ --queryformat=%{url} )
-echo 'Source0: http://downloads.sourceforge.net/%{name}/%{name}-%{version}.tar.gz'
+echo 'Source0: http://downloads.sourceforge.net/project/%{name}/%{name}-%{version}.tar.gz'
 BuildArch=$( $_RPMQ --queryformat=%{arch} )
 if [ "$BuildArch" == "noarch" ] ; then
   echo 'BuildArch: noarch'
@@ -91,7 +92,7 @@ Files=$( $_RPMQ -l )
 grep "\.desktop *$" <<< "$Files" > /dev/null && BuildRequires="$BuildRequires\ndesktop-file-utils"
 
 for x in $(echo -e "$BuildRequires" | sort -u ) ; do
-  echo 'BuildRequires: ' $x
+  echo 'BuildRequires:' $x
 done
 for x in $UnonReqs ; do
   echo '#Requires:' $x
@@ -112,7 +113,8 @@ echo '%install'
 echo 'make install DESTDIR=%{buildroot}'
 echo
 if [ "$( $_RPMQ --scripts )" ] ; then
-  $_RPMQ --scripts | sed 's/\(post|postun|pre|preun\)install scriptlet (using \/bin\/sh):/\n%\1/'
+  $_RPMQ --scripts | sed 's/\(p.*\)install scriptlet (using \/bin\/sh):/\n%\1/'
+  echo
 fi
 
 echo '%files'
@@ -123,7 +125,7 @@ declare -i lx ly=1
 y="*"
 for x in $Files ; do
   lx=${#x}
-  if   [ "${x:$ly:1}" != "/" ] || [ "${x:0:$ly}" != "$y" ] ; then
+  if [ "${x:$ly:1}" != "/" -o "${x:0:$ly}" != "$y" ] ; then
 
     if [ "$y" == "*" ] ; then Files2="$x"
     else Files2="${Files2}\n${x}" ; fi
@@ -134,11 +136,11 @@ for x in $Files ; do
 done
 
 Files=$( echo -e "$Files2" | sed -e "s|/$Name/.*|/$Name|g" -e "s|/$Name-$Version/.*|/$Name-$Version|g" -e "s|/$Name-$Version-$Release/.*|/$Name-$Version-$Release|g" -e 's|^/usr/share/locale/[^/]*/LC_MESSAGES/|/usr/share/locale/*/LC_MESSAGES/|g' -e 's|^/usr/share/man/[^/]*/man|/usr/share/man/*/man|g' | sort -u )
-Files=$( sed -e 's|^/usr/share/man|%{_mandir}|g' -e 's|^/usr/share/applications|%{_desktopdir}|g' -e 's|^/usr/share/icons|%{_iconsdir}|g' <<< "$Files" )
+Files=$( sed -e 's|^/usr/share/man|%{_mandir}|g' -e 's|^/usr/share/info|%{_infodir}|g' <<< "$Files" )
 
 Files=$( sed -e 's|^/usr/bin|%{_bindir}|g' -e 's|^/usr/sbin|%{_sbindir}|g' -e 's|^/usr/include|%{_includedir}|g' -e 's|^/usr/share|%{_datadir}|g' -e 's|^/usr/lib64|%{_libdir}|g' -e "s|$Version-$Release|%{version}-%{release}|g" <<< "$Files" )
 
-if [ "$BuildArch" != "noarch" ] && [ "$BuildArch" != "x86_64" ] ; then
+if [ "$BuildArch" != "noarch" -a "$BuildArch" != "x86_64" ] ; then
   Files=$( sed -e 's|^/usr/lib|%{_libdir}|g' <<< "$Files" )
 fi
 
@@ -155,6 +157,3 @@ echo '- Regenerated spec using rpm2spec'
 if [ "$( $_RPMQ --changelog )" ] ; then
   $_RPMQ --changelog
 fi
-
-exit 0
-
