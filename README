@@ -5,7 +5,7 @@ rpm-hacks
 
 Description
 -----------
-  These are several useful shell scripts for making or modifying RPM packages.
+These are useful shell scripts for making or modifying RPM packages.
 The 'deb2spec' produce a spec file from a .deb, Debian package file, and the
 'rpm2spec' do a similar work but from .rpm file or package installed in a
 system.  The 'rpmjail', made with FUSE, is for running RPM in a jailed
@@ -14,18 +14,18 @@ self-extracting archive.
 
 
 Install
------------
+-------
 make
 make install
 
 
 License
------------
-Released under MIT License.
+-------
+MIT License
 
 
 Authors
-------
+-------
 deb2spec: 	Robert Wei, Wei-Lun Chao
 rpm2spec:	Aleksey Barabanov, Kevin Chen, Robert Wei, Wei-Lun Chao
 rpmjail:	Wei-Lun Chao
