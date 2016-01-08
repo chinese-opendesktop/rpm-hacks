@@ -1,7 +1,7 @@
 Name:		rpm-hacks
-Version:	2015.9
+Version:	2016.1
 Release:	1%{?dist}
-Summary:	RPM utilities in shell-script
+Summary:	RPM hacks utilities
 Group:		Applications/Engineering
 License:	MIT License
 Source0:	%{name}-%{version}.tar.gz
@@ -19,6 +19,9 @@ system.  The 'rpmjail', made with FUSE, is for running RPM in a jailed
 environment.  The 'b64shar' can encode any file in to a base64-encoded shell
 self-extracting archive.
 
+macros.compat-srpm provides macros for building compatible projects from
+various distributions.
+
 %prep
 %setup -q
 
@@ -35,9 +38,10 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %doc README
 %{_bindir}/*
+%{_rpmconfigdir}/macros.d/macros.compat-srpm
 
 %changelog
-* Thu Sep 03 2015 Wei-Lun Chao <bluebat@member.fsf.org> 2015.9-1
+* Fri Jan 08 2016 Wei-Lun Chao <bluebat@member.fsf.org> 2016.1-1
 - Rebuild
 
 * Thu Dec 20 2012 Robert Wei <robert.wei@ossii.com.tw> 2012.12-1

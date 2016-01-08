@@ -1,7 +1,7 @@
 PROGS = b64shar deb2spec rpm2spec rpmjail
-.PHONY: all install
+.PHONY: build install
 
-all: $(PROGS)
+build: $(PROGS)
 
 $(PROGS):
 	cp $@.sh $@
@@ -9,4 +9,5 @@ $(PROGS):
 install: $(PROGS)
 	install -d $(DESTDIR)/usr/bin/
 	install -m 755 $(PROGS) $(DESTDIR)/usr/bin/
-
+	install -d $(DESTDIR)/usr/lib/rpm/macros.d/
+	install -m 644 macros.compat-srpm $(DESTDIR)/usr/lib/rpm/macros.d/

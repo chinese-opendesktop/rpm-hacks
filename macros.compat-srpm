@@ -1,0 +1,45 @@
+# Tolerance
+%debug_package %{nil}
+%__arch_install_post %{nil}
+%__os_install_post %{nil}
+%__spec_install_post %{nil}
+%_default_patch_fuzz 2
+%_disable_ld_as_needed 1
+%_disable_ld_no_undefined 1
+%_unpackaged_files_terminate_build 0
+
+# Directory
+%tmpdir %{_tmppath}
+%python_sitelibdir %python_sitearch
+%py_platsitedir %python_sitearch
+%_appdefdif /usr/share/X11/app-defaults
+%_pixmapsdir /usr/share/pixmaps
+%_iconsdir /usr/share/icons
+%_man1dir /usr/share/man/man1
+%_man5dir /usr/share/man/man5
+%_man6dir /usr/share/man/man6
+%_man8dir /usr/share/man/man8
+%_desktopdir /usr/share/applications
+%_gamesbindir /usr/bin
+%_gamesdatadir /usr/share
+%_x11sysconfdir /etc/X11
+%_x11x11dir /usr/share
+%_x11dir /usr
+
+# Command
+%__autoreconf autoreconf
+%autoreconf autoreconf
+%configure2_5x %{configure}
+%make make
+%makeinstall_std %{makeinstall}
+%_install_info install-info
+%install_info install-info
+
+# Variable
+%mkrel %{nil}
+%mklibname %{nil}
+%ext_man .gz
+%rpmcflags %{optflags}
+%rpmldflags -s
+%date %(date)
+%ldflags %{nil}
