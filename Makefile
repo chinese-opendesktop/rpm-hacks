@@ -10,4 +10,4 @@ install: $(PROGS)
 	install -d $(DESTDIR)/usr/bin/
 	install -m 755 $(PROGS) $(DESTDIR)/usr/bin/
 	install -d $(DESTDIR)/usr/lib/rpm/macros.d/
-	install -m 644 macros.compat-srpm $(DESTDIR)/usr/lib/rpm/macros.d/
+	install -m 644 macros.hacks-srpm $(DESTDIR)/usr/lib/rpm/macros.d/

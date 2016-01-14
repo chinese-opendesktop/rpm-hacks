@@ -19,7 +19,7 @@ system.  The 'rpmjail', made with FUSE, is for running RPM in a jailed
 environment.  The 'b64shar' can encode any file in to a base64-encoded shell
 self-extracting archive.
 
-macros.compat-srpm provides macros for building compatible projects from
+macros.hacks-srpm provides macros for building compatible projects from
 various distributions.
 
 %prep
@@ -38,7 +38,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %doc README
 %{_bindir}/*
-%{_rpmconfigdir}/macros.d/macros.compat-srpm
+%{_rpmconfigdir}/macros.d/macros.hacks-srpm
 
 %changelog
 * Fri Jan 08 2016 Wei-Lun Chao <bluebat@member.fsf.org> 2016.1-1
