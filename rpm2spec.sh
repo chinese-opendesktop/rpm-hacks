@@ -106,11 +106,11 @@ echo '%prep'
 echo '%setup -q'
 echo
 echo '%build'
-echo '%configure'
-echo 'make %{?_smp_mflags}'
+echo '%configure || %cmake || %qmake_qt4 || %qmake_qt5 || true'
+echo 'make %{?_smp_mflags} || python setup.py build'
 echo
 echo '%install'
-echo 'make install DESTDIR=%{buildroot}'
+echo 'make install DESTDIR=%{buildroot} || python setup.py install --skip-build --root=%{buildroot} --prefix=/usr'
 echo
 if [ "$( $_RPMQ --scripts )" ] ; then
   $_RPMQ --scripts | sed 's/\(p.*\)install scriptlet (using \/bin\/sh):/\n%\1/'

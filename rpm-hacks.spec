@@ -1,6 +1,6 @@
 Name:		rpm-hacks
 Version:	2016.1
-Release:	1%{?dist}
+Release:	1
 Summary:	RPM hacks utilities
 Group:		Applications/Engineering
 License:	MIT License

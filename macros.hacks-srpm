@@ -7,10 +7,12 @@
 %_disable_ld_as_needed 1
 %_disable_ld_no_undefined 1
 %_unpackaged_files_terminate_build 0
+%optflags "%optflags -fpermissive -fPIC -Wno-error"
 
 # Directory
 %tmpdir %{_tmppath}
-%python_sitelibdir %python_sitearch
+%python_sitelibdir %python_sitelib
+%py_puresitedir %python_sitelib
 %py_platsitedir %python_sitearch
 %_appdefdif /usr/share/X11/app-defaults
 %_pixmapsdir /usr/share/pixmaps
@@ -24,6 +26,7 @@
 %_gamesdatadir /usr/share
 %_x11sysconfdir /etc/X11
 %_x11x11dir /usr/share
+%_x11bindir /usr/bin
 %_x11dir /usr
 
 # Command
@@ -31,9 +34,13 @@
 %autoreconf autoreconf
 %configure2_5x %{configure}
 %make make
-%makeinstall_std %{makeinstall}
+%makeinstall_std %{make_install}
 %_install_info install-info
 %install_info install-info
+%fdupes fdupes
+%apply_patches true
+%python_build python setup.py build
+%python_install python setup.py install --skip-build --root=%{buildroot} --prefix=%{_prefix}
 
 # Variable
 %mkrel %{nil}
