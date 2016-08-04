@@ -7,7 +7,7 @@
 %_disable_ld_as_needed 1
 %_disable_ld_no_undefined 1
 %_unpackaged_files_terminate_build 0
-%optflags "%optflags -fpermissive -fPIC -Wno-error"
+%_hardened_build %{nil}
 
 # Directory
 %tmpdir %{_tmppath}
@@ -38,15 +38,17 @@
 %_install_info install-info
 %install_info install-info
 %fdupes fdupes
-%apply_patches true
+%apply_patches %autopatch
 %python_build python setup.py build
 %python_install python setup.py install --skip-build --root=%{buildroot} --prefix=%{_prefix}
 
 # Variable
+%__global_cflags %__global_cflags -fpermissive -fPIC -Wno-error
+%__global_ldflags -Wl,-z,relro -lm -ldl
 %mkrel %{nil}
 %mklibname %{nil}
 %ext_man .gz
 %rpmcflags %{optflags}
 %rpmldflags -s
 %date %(date)
-%ldflags %{nil}
+%ldflags $RPM_LD_FLAGS
