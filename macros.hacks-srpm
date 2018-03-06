@@ -16,7 +16,10 @@
 %py_platsitedir %python_sitearch
 %_appdefdif /usr/share/X11/app-defaults
 %_pixmapsdir /usr/share/pixmaps
-%_iconsdir /usr/share/icons
+%_kde4_iconsdir /usr/share/icons
+%_iconsdir /usr/share/icons/hicolor/32x32/apps
+%_miconsdir /usr/share/icons/hicolor/16x16/apps
+%_liconsdir /usr/share/icons/hicolor/64x64/apps
 %_man1dir /usr/share/man/man1
 %_man5dir /usr/share/man/man5
 %_man6dir /usr/share/man/man6
@@ -41,6 +44,8 @@
 %apply_patches %autopatch
 %python_build python setup.py build
 %python_install python setup.py install --skip-build --root=%{buildroot} --prefix=%{_prefix}
+%glib2_gsettings_schema_post %{_bindir}/glib-compile-schemas %{_datadir}/glib-2.0/schemas
+%glib2_gsettings_schema_postun %{_bindir}/glib-compile-schemas %{_datadir}/glib-2.0/schemas
 
 # Variable
 %__global_cflags %__global_cflags -fpermissive -fPIC -Wno-error

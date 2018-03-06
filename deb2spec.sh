@@ -14,14 +14,14 @@ if [ "$_PACKAGE" = "" -o "$_PACKAGE" = "-h" ]; then
     *) echo 'Usage:' $0 '-h|PACKAGE_NAME|PACKAGE_FILE' ;;
   esac
   exit 0
-elif ! (dpkg-deb -h 2>/dev/null >&2) ; then
+elif ! (dpkg-deb --help &>/dev/null) ; then
   case $LANG in
     zh_CN*) echo '错误：dpkg 软件包尚未安装'  >&2 ;;
     zh_TW*) echo '錯誤：dpkg 套件尚未安裝'  >&2 ;;
     *) echo 'Error: dpkg package has not been installed'  >&2 ;;
   esac
   exit 1
-elif (dpkg-deb -f "$_PACKAGE" 2>/dev/null >&2); then
+elif (dpkg-deb -f "$_PACKAGE" &>/dev/null); then
   _debQ="dpkg-deb -W --showformat="
 else
   case $LANG in
