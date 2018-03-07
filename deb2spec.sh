@@ -209,5 +209,5 @@ echo -e "$Files"
 
 echo
 echo '%changelog'
-echo '* '$( date '+%a %b %d %Y' ) "$USER <$USER@$HOSTNAME>"
+echo '* '$( LC_ALL=C date '+%a %b %d %Y' ) "$USER <$USER@$HOSTNAME>"
 echo '- Regenerated spec using deb2spec'

@@ -2,7 +2,7 @@
 #
 # Rpm To Spec: Automatic spec reconstructor
 # Ver. 0.0.1, May 2004, Aleksey Barabanov <alekseybb@mail.ru> http://www.barabanov.ru/proj/rpm2spec
-# Ver. 0.0.2, Aug 2012, Kevin Chen <kevin.chen@ossii.com.tw>, Wei-Lun Chao <william.chao@ossii.com.tw>
+# Ver. 0.0.2, Aug 2012, Kevin Chen <kevin.chen@ossii.com.tw>
 # Ver. 0.0.3, Dec 2012, Robert Wei <robert.wei@ossii.com.tw>
 # Ver. 0.0.4, Sep 2015, Wei-Lun Chao <bluebat@member.fsf.org>
 #
@@ -152,7 +152,7 @@ echo -e "$Files"
 
 echo
 echo '%changelog'
-echo '* '$( date '+%a %b %d %Y' ) "$USER <$USER@$HOSTNAME>"
+echo '* '$( LC_ALL=C date '+%a %b %d %Y' ) "$USER <$USER@$HOSTNAME>"
 echo '- Regenerated spec using rpm2spec'
 if [ "$( $_RPMQ --changelog )" ] ; then
   $_RPMQ --changelog
