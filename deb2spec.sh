@@ -133,7 +133,7 @@ fi
 
 echo
 echo '%description'
-$_debQ'${Description}' $_PACKAGE | tail -n +2 | sed 's/^ //'
+$_debQ'${Description}' $_PACKAGE | tail -n +2 | sed 's/^ \.\?//'
 echo
 echo
 echo '%prep'
