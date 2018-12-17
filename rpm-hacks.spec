@@ -1,5 +1,5 @@
 Name:		rpm-hacks
-Version:	2016.1
+Version:	2018.1
 Release:	1
 Summary:	RPM hacks utilities
 Group:		Applications/Engineering
@@ -41,8 +41,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_rpmconfigdir}/macros.d/macros.hacks-srpm
 
 %changelog
-* Fri Jan 08 2016 Wei-Lun Chao <bluebat@member.fsf.org> 2016.1-1
+* Mon Dec 17 2018 Wei-Lun Chao <bluebat@member.fsf.org> - 2018.1-1
 - Rebuild
-
-* Thu Dec 20 2012 Robert Wei <robert.wei@ossii.com.tw> 2012.12-1
+* Thu Dec 20 2012 Robert Wei <robert.wei@ossii.com.tw> - 2012.12-1
 - First build

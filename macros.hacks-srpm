@@ -53,7 +53,7 @@
 %setup_compile_flags export CFLAGS=%{optflags} CXXFLAGS=%{optflags}
 
 # Variable
-%__global_cflags %__global_cflags -fpermissive -fPIC -Wno-error
+%__global_cflags %__global_cflags -fpermissive -fPIC -DPIC -Wno-error
 %__global_ldflags -Wl,-z,relro -lm -ldl
 %mkrel %{nil}
 %mklibname %{nil}
@@ -62,3 +62,4 @@
 %rpmldflags -s
 %date %(date)
 %ldflags $RPM_LD_FLAGS
+%_smp_mflags -j1
