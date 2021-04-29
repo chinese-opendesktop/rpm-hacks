@@ -49,7 +49,7 @@ URL=$( $_debQ'${Homepage}' $_PACKAGE )
 if [ -n "$URL" ] ; then
   echo 'URL:' $URL
 fi
-echo 'Source0: http://downloads.sourceforge.net/%{name}/%{name}-%{version}.tar.gz'
+echo 'Source0: https://github.com/%{name}/%{name}/archive/v%{version}.tar.gz#/%{name}-%{version}.tar.gz'
 BuildArch=$( $_debQ'${Architecture}' $_PACKAGE )
 if [ "$BuildArch" = "all" ] ; then
   echo 'BuildArch: noarch'

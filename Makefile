@@ -1,4 +1,4 @@
-VERSION = 2018.1
+VERSION = 2021.4
 DESTDIR =
 PREFIX = /usr
 PACKAGE = rpm-hacks

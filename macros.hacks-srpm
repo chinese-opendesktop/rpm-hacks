@@ -3,6 +3,7 @@
 %__arch_install_post %{nil}
 %__os_install_post %{nil}
 %__spec_install_post %{nil}
+%__brp_mangle_shebangs %{nil}
 %_default_patch_fuzz 2
 %_disable_ld_as_needed 1
 %_disable_ld_no_undefined 1
@@ -53,8 +54,9 @@
 %setup_compile_flags export CFLAGS=%{optflags} CXXFLAGS=%{optflags}
 
 # Variable
-%__global_cflags %__global_cflags -fpermissive -fPIC -DPIC -Wno-error
-%__global_ldflags -Wl,-z,relro -lm -ldl
+%__global_cflags %__global_cflags -fpermissive -fPIC -DPIC -Wno-error -fno-tree-loop-distribute-patterns
+%__global_cxxflags %__global_cxxflags -std=gnu++11
+%__global_ldflags -Wl,-z,relro -lm -ldl -Wl,--allow-multiple-definition
 %mkrel %{nil}
 %mklibname %{nil}
 %ext_man .gz
@@ -63,3 +65,4 @@
 %date %(date)
 %ldflags $RPM_LD_FLAGS
 %_smp_mflags -j1
+%_cmake_shared_libs -DBUILD_SHARED_LIBS:BOOL=ON -DCMAKE_BUILD_TYPE=release -DCMAKE_C_FLAGS_RELEASE="%{optflags} -fPIC -fpermissive" %-DCMAKE_CXX_FLAGS_RELEASE="%{optflags} -fPIC -fpermissive"
