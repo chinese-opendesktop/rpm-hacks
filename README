@@ -2,27 +2,24 @@ Name
 ----
 rpm-hacks
 
-
 Description
 -----------
-These are useful shell scripts for making or modifying RPM packages.
-The 'deb2spec' produce a spec file from a .deb, Debian package file, and the
-'rpm2spec' do a similar work but from .rpm file or package installed in a
-system.  The 'rpmjail', made with FUSE, is for running RPM in a jailed
-environment.  The 'b64shar' can encode any file in to a base64-encoded shell
-self-extracting archive.
-
+These are useful shell scripts for making or modifying RPM packages:
+deb2spec - produce a spec file from a .deb, Debian package file
+rpm2spec - produce a spec file from a .rpm package
+rpmjail - made with FUSE for running RPM in a jailed environment
+b64shar - make any file into a base64-encoded shell self-extracting archive
+ar2spec - produce a spec file from a software archive
 
 Install
 -------
 make
 make install
 
-
 License
 -------
-MIT (c) opendesktop.org.tw, 2010.
-
+MIT, opendesktop.org.tw, 2010.
+MIT, Wei-Lun Chao, 2022.
 
 Authors
 -------
@@ -30,3 +27,4 @@ deb2spec: 	Robert Wei, Wei-Lun Chao
 rpm2spec:	Aleksey Barabanov, Kevin Chen, Robert Wei, Wei-Lun Chao
 rpmjail:	Wei-Lun Chao
 b64shar:	Wei-Lun Chao
+ar2spec:	Wei-Lun Chao

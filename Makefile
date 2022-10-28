@@ -2,7 +2,7 @@ VERSION = 2022.10
 DESTDIR =
 PREFIX = /usr
 PACKAGE = rpm-hacks
-PROGS = b64shar deb2spec rpm2spec rpmjail
+PROGS = b64shar deb2spec rpm2spec rpmjail ar2spec
 
 build: $(PROGS)
 

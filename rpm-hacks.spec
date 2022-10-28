@@ -12,12 +12,12 @@ Requires:	fuse
 BuildArch:	noarch
 
 %description
-These are useful shell scripts for making or modifying RPM packages.
-The 'deb2spec' produce a spec file from a .deb, Debian package file, and the
-'rpm2spec' do a similar work but from .rpm file or package installed in a
-system.  The 'rpmjail', made with FUSE, is for running RPM in a jailed
-environment.  The 'b64shar' can encode any file in to a base64-encoded shell
-self-extracting archive.
+These are useful shell scripts for making or modifying RPM packages:
+deb2spec - produce a spec file from a .deb, Debian package file
+rpm2spec - produce a spec file from a .rpm package
+rpmjail - made with FUSE for running RPM in a jailed environment
+b64shar - make any file into a base64-encoded shell self-extracting archive
+ar2spec - produce a spec file from a software archive
 
 %prep
 %setup -q
