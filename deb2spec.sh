@@ -36,7 +36,7 @@ LANG=C
 Name=$( $_debQ'${Package}' $_PACKAGE )
 x=${Name%-dev} ; if [ "$x" != "$Name" ] ; then Name=${x}-devel ; fi
 Version=$( $_debQ'${Version}' $_PACKAGE )
-Release=${Version#*-}
+Release=1
 Version=${Version%%-*}
 $_debQ'${Description}' $_PACKAGE | read Summary
 echo 'Name:' $Name

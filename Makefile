@@ -1,4 +1,4 @@
-VERSION = 2021.4
+VERSION = 2022.10
 DESTDIR =
 PREFIX = /usr
 PACKAGE = rpm-hacks
@@ -12,11 +12,9 @@ $(PROGS):
 install: $(PROGS)
 	install -d $(DESTDIR)/usr/bin
 	install -m755 $(PROGS) $(DESTDIR)/usr/bin
-	install -Dm644 macros.hacks-srpm $(DESTDIR)/usr/lib/rpm/macros.d/macros.hacks-srpm
 
 uninstall:
 	cd $(DESTDIR)$(PREFIX)/bin ; rm -f $(PROGS)
-	rm -f $(DESTDIR)/usr/lib/rpm/macros.d/macros.hacks-srpm  
 
 clean:
 
