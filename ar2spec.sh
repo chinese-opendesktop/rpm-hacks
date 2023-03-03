@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2023.01.18"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2023.03.03"
 _ERROR=true
 _COMPAT=false
 while [ -n "$1" ] ; do
@@ -49,7 +49,7 @@ function _initial_variables {
     _SOURCE=$(basename "${_FILE}")
     _URL=""
     _BUILDREQUIRES=""
-    _BUILDARCH=""
+    _NOARCH=false
     _DESCRIPTION="No description."
     _SETUP="-q"
     _TOOLCHAIN=""
@@ -58,7 +58,7 @@ function _initial_variables {
     _COMPATCXXFLAGS="-fpermissive -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
     _BUILDCONF=""
     _BUILDMAKE="#No build"
-    _INSTALL=false
+    _INSTALL="false"
     _DOCS=""
     _DATE=$(LC_ALL=C date '+%a %b %d %Y')
     [ -z "${_PACKAGER}" ] && which git &>/dev/null && _PACKAGER="$(git config user.name) <$(git config user.email)>"
@@ -90,6 +90,11 @@ function _unpack_archive {
         _BASENAME=${_SOURCE%.7z}
         _URLSITE="sourceforge"
         _BUILDREQUIRES=" p7zip"
+    elif [ "${_FILEEXT}" = jar ] ; then
+        cp "${_FILE}" "${_TEMPDIR}"
+        _SETUP+=" -T"
+        _BASENAME=${_SOURCE%.jar}
+        _URLSITE="sourceforge"
     else
         echo "ERROR! Unrecognized archive: ${_FILE}" >&2
         exit 1
@@ -109,6 +114,7 @@ function _set_attributes {
     _BASENAME="${_BASENAME/[._-][Pp]ortable/}"
     _PKGNAME="${_BASENAME%%[_-][0-9]*}"
     [ "${_PKGNAME}" = "${_BASENAME}" ] && _PKGNAME="${_BASENAME%[-_]*}"
+    [ "${_PKGNAME}" = "${_BASENAME}" ] && _PKGNAME="${_BASENAME%%[0-9]*}"
     _VERSION="${_BASENAME#${_PKGNAME}}"
     _VERSION="${_VERSION#[-_]}"
     _VERSION="${_VERSION#[Vv]}"
@@ -128,7 +134,7 @@ function _set_attributes {
     _SRCNAME=${_SRCNAME/${_NAME}/%\{name\}}
     _SRCNAME=${_SRCNAME/${_VERSION}/%\{version\}}
     function _url_github {
-        _URL=$(curl -s --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 'https://github.com/[0-9A-Za-z]*/'${_NAME}'&quot;'|sed 's|.*\(https://github.com/[-0-9A-Za-z]*/'${_NAME}'\).*|\1|i')
+        _URL=$(curl -s --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 'https://github.com/[-0-9A-Za-z]*/'${_NAME}'&quot;'|sed 's|.*\(https://github.com/[-0-9A-Za-z]*/'${_NAME}'\).*|\1|i')
         if [ -n "${_URL}" ] ; then
             _SUMMARY=$(curl -s --retry 1 "${_URL}"|grep -im1 '<title>GitHub'|sed 's|.*<title>GitHub - .*/'${_NAME}': \([^.]*\).*</title>|\1|i')
             if [ "${_VERSION}" = master -o "${_VERSION}" = main ] ; then
@@ -173,6 +179,7 @@ function _enter_directory {
         _DIRNAME="${_DIRNAME// /\\ }"
         if [ "${_DIRNAME}" != "${_NAME}-${_VERSION}" ] ; then
             _SETUP+=" -n ${_DIRNAME/${_VERSION}/%\{version\}}"
+            _SETUP="${_SETUP/${_NAME}/%\{name\}}"
         fi
     else
         _SETUP+=" -c"
@@ -181,10 +188,10 @@ function _enter_directory {
     _FINDFILE=$(find . -type f -name '*.spec' -print -quit)
     [ -n "${_FINDFILE}" ] && _COMMENT="See ${_FINDFILE} in Source."
     _FINDFILE=$(find . -type f -iregex '.*\.\(c\|cc\|cpp\|c\+\+\|cxx\|cs\|go\|hs\|pas\|swift\|adb\|f\|f77\|f90\|f95\|rs\|vala\|ml\)')
-    [ -z "${_FINDFILE}" ] && _BUILDARCH="noarch"
+    [ -z "${_FINDFILE}" ] && _NOARCH=true
     for f in COPYING COPYING.L* LICENSE AUTHORS NEWS CHANGELOG ChangeLog README TODO THANKS TRANSLATION *.pdf *.rst *.md *.txt ; do
         if [ -f "$f" -a "$f" != CMakeLists.txt -a "$f" != meson_options.txt ] ; then
-            [ "$f" = "${f/ /}" ] && _DOCS+=" $f" || _DOCS+=" \"$f\""
+            [ "${f/ /}" = "$f" ] && _DOCS+=" $f" || _DOCS+=" \"$f\""
         fi
     done
     if [ -n "${_DOCS}" ] ; then
@@ -211,10 +218,10 @@ function _enter_directory {
             _TOOLCHAIN="bootstrap"
         elif [ -f autogen.sh ] ; then
             _TOOLCHAIN="autogen"
-        elif [ -f configure ] ; then
-            _TOOLCHAIN="configure"
         elif [ -f configure.ac -o -f configure.in ] ; then
             _TOOLCHAIN="autoreconf"
+        elif [ -f configure ] ; then
+            _TOOLCHAIN="configure"
         elif [ -f CMakeLists.txt ] ; then
             _TOOLCHAIN="cmake"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.pro' -print -quit)" ] ; then
@@ -223,8 +230,8 @@ function _enter_directory {
             _TOOLCHAIN="imake"
         elif [ -f setup.py ] ; then
             grep -qs '\(python2\|print "\)' * && _TOOLCHAIN="python2" || _TOOLCHAIN="python3"
-        elif [ -f "$(find . -type f -iregex '\./makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)" ] ; then
-            _BUILDFILE="$(find . -type f -iregex '\./makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)"
+        elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)" ] ; then
+            _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)"
             _TOOLCHAIN="make-f"
         elif [ -f Cargo.toml ] ; then
             _TOOLCHAIN="cargo"
@@ -254,12 +261,11 @@ function _enter_directory {
             _TOOLCHAIN="perl"
         elif [ -f Makefile -o -f makefile -o -f GNUmakefile ] ; then
             _TOOLCHAIN="make"
-        elif [ -f "$(find . -type f -iregex '\./'${_NAME}'\.\(c\|cc\|cpp\)' -print -quit)" ] ; then
-            _BUILDFILE="$(find . -type f -iregex '\./'${_NAME}'\.\(c\|cc\|cpp\)' -print -quit)"
+        elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(c\|cc\|cpp\)' -print -quit)" ] ; then
             _TOOLCHAIN="gcc"
-        elif [ -f "$(find . -type f -iregex '\./'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)" ] ; then
-            _BUILDFILE="$(find . -type f -iregex '\./'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)"
-            _TOOLCHAIN="script"
+        elif [ -f package.json ] ; then
+            _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|index\).*\.js' -print -quit)"
+            _TOOLCHAIN="nodejs"
         elif [ -f index.theme ] ; then
             [ -d 16x16 ] && _TOOLCHAIN="icon" || _TOOLCHAIN="theme"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.tt?' -print -quit)" ] ; then
@@ -270,6 +276,9 @@ function _enter_directory {
             _TOOLCHAIN="lazarus"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.csproj' -print -quit)" ] ; then
             _TOOLCHAIN="dotnet"
+        elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)" ] ; then
+            _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)"
+            _TOOLCHAIN="script"
         elif [ -f build.sh -o -f install.sh ] ; then
             _TOOLCHAIN="shell"
         elif [ -d usr/bin -o -d usr/share ] ; then
@@ -278,7 +287,7 @@ function _enter_directory {
     }
     _check_toolchain
     if [ -z "${_TOOLCHAIN}" ] ; then
-        for d in src* source* linux* */ ; do
+        for d in [Ss]rc* [Ss]ource* [Ll]inux* */ ; do
             if [ -d "$d" ] ; then
                 cd "$d"
                 _check_toolchain
@@ -305,14 +314,14 @@ function _set_scripts {
         _BUILDCONF="chmod +x autogen.sh\n./autogen.sh\n#{configure}\n./configure"
         _BUILDMAKE="#{make_build}\nmake"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = configure ] ; then
-        _BUILDREQUIRES+=" automake"
-        _BUILDCONF="chmod +x configure\n#{configure}\n./configure"
-        _BUILDMAKE="#{make_build}\nmake"
-        _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = autoreconf ] ; then
         _BUILDREQUIRES+=" automake"
         _BUILDCONF="autoreconf -ifv\n#{configure}\n./configure"
+        _BUILDMAKE="#{make_build}\nmake"
+        _INSTALL="%{make_install}"
+    elif [ "${_TOOLCHAIN}" = configure ] ; then
+        _BUILDREQUIRES+=" automake"
+        _BUILDCONF="chmod +x configure\n#{configure}\n./configure"
         _BUILDMAKE="#{make_build}\nmake"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = cmake ] ; then
@@ -347,8 +356,8 @@ function _set_scripts {
         _BUILDMAKE="#{make_build}\nmake"
         _INSTALL="%{make_install}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = make-f ] ; then
-        _BUILDMAKE="make -f ${_BUILDFILE}||%{make_build} -f ${_BUILDFILE}"
-        _INSTALL="%{make_install} -f ${_BUILDFILE}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
+        _BUILDMAKE="make -f ${_BUILDFILE#./}||%{make_build} -f ${_BUILDFILE#./}"
+        _INSTALL="%{make_install} -f ${_BUILDFILE#./}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = cargo ] ; then
         _BUILDREQUIRES+=" cargo"
         _BUILDCONF="cargo update"
@@ -384,7 +393,7 @@ function _set_scripts {
         fi
     elif [ "${_TOOLCHAIN}" = gem ] ; then
         _BUILDREQUIRES+=" rubygems-devel"
-        _BUILDMAKE="gem build *.gemspec\n%{gem_install}"
+        _BUILDMAKE="%global gem_name %{name}\ngem build *.gemspec\n%{gem_install}"
         _INSTALL="mkdir -p %{buildroot}%{gem_dir}\ncp -a .%{gem_dir}/* %{buildroot}%{gem_dir}"
     elif [ "${_TOOLCHAIN}" = rake ] ; then
         _BUILDREQUIRES+=" rubygem-rake"
@@ -392,12 +401,12 @@ function _set_scripts {
         _INSTALL="rake install DESTDIR=%{buildroot}"
     elif [ "${_TOOLCHAIN}" = ant ] ; then
         _BUILDREQUIRES+=" java-devel-openjdk ant"
-        _BUILDARCH="noarch"
+        _NOARCH=true
         _BUILDMAKE="ant"
         _INSTALL="install -d %{buildroot}%{_datadir}/%{name}\ncp -a dist/* %{buildroot}%{_datadir}/%{name}"
     elif [ "${_TOOLCHAIN}" = maven ] ; then
         _BUILDREQUIRES+=" java-devel-openjdk maven"
-        _BUILDARCH="noarch"
+        _NOARCH=true
         _BUILDMAKE="mvn -e package"
         _INSTALL="install -d %{buildroot}%{_datadir}/%{name}\ninstall -m644 %{name}.jar %{buildroot}%{_datadir}/%{name}"
     elif [ "${_TOOLCHAIN}" = dune ] ; then
@@ -411,27 +420,29 @@ function _set_scripts {
         _INSTALL="cabal install"
     elif [ "${_TOOLCHAIN}" = perl ] ; then
         _BUILDREQUIRES+=" perl-devel"
-        _BUILDARCH="noarch"
+        _NOARCH=true
         _BUILDMAKE="perl Makefile.PL INSTALLDIRS=vendor\n#%{make_build}\nmake"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = gcc ] ; then
         _BUILDMAKE="make %{name}"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = script ] ; then
-        _BUILDARCH="noarch"
-        _INSTALL="install -Dm755 ${_BUILDFILE} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE}"
+    elif [ "${_TOOLCHAIN}" = nodejs ] ; then
+        _BUILDREQUIRES+=" nodejs-devel"
+        _NOARCH=true
+        _INSTALL="mkdir -p %{buildroot}%{nodejs_sitelib}/%{name} %{buildroot}%{_bindir}\ncp -a * %{buildroot}%{nodejs_sitelib}/%{name}"
+        _INSTALL+="\nln -s %{nodejs_sitelib}/%{name}/${_BUILDFILE#./} %{buildroot}%{_bindir}/%{name}\nrm -f %{buildroot}%{nodejs_sitelib}/%{name}/{*.md,LICENSE}"
     elif [ "${_TOOLCHAIN}" = icon ] ; then
-        _BUILDARCH="noarch"
+        _NOARCH=true
         _INSTALL="install -d %{buildroot}%{_datadir}/icons/${_SUBDIR:-$_NAME}\ncp -a * %{buildroot}%{_datadir}/icons/${_SUBDIR:-$_NAME}"
     elif [ "${_TOOLCHAIN}" = theme ] ; then
-        _BUILDARCH="noarch"
+        _NOARCH=true
         _INSTALL="install -d %{buildroot}%{_datadir}/themes/${_SUBDIR:-$_NAME}\ncp -a * %{buildroot}%{_datadir}/themes/${_SUBDIR:-$_NAME}"
     elif [ "${_TOOLCHAIN}" = font ] ; then
-        _BUILDARCH="noarch"
+        _NOARCH=true
         _INSTALL="install -d %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}\ncp *.tt? %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}"
     elif [ "${_TOOLCHAIN}" = jar ] ; then
         _RELEASE+=".bin"
-        _BUILDARCH="noarch"
+        _NOARCH=true
         _INSTALL="install -d %{buildroot}%{_datadir}/${_SUBDIR:-$_NAME}\ncp *.jar %{buildroot}%{_datadir}/${_SUBDIR:-$_NAME}"
     elif [ "${_TOOLCHAIN}" = lazarus ] ; then
         _BUILDREQUIRES+=" lazarus"
@@ -441,6 +452,9 @@ function _set_scripts {
         _BUILDREQUIRES+=" dotnet-host"
         _BUILDMAKE="dotnet publish *.csproj -r linux-x64 -c Release --no-self-contained"
         _INSTALL="install -Dm755 bin/Release/*/linux-x64/publish/%{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_TOOLCHAIN}" = script ] ; then
+        _NOARCH=true
+        _INSTALL="install -Dm755 ${_BUILDFILE#./} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE#./}"
     elif [ "${_TOOLCHAIN}" = shell ] ; then
         [ -f build.sh ] && _BUILDMAKE="bash build.sh"
         [ -f install.sh ] && _INSTALL="sed -i 's| /usr| %{buildroot}/usr|' install.sh\nbash install.sh"
@@ -448,9 +462,9 @@ function _set_scripts {
         _INSTALL="install -d %{buildroot}\ncp -a * %{buildroot}"
         if find . -type f -exec file '{}' \; | grep -qsim1 ELF ; then
             _RELEASE+=".bin"
-            _BUILDARCH=""
+            _NOARCH=false
         else
-            _BUILDARCH="noarch"
+            _NOARCH=true
         fi
     fi
 }
@@ -470,28 +484,34 @@ function _output_data {
     echo 'Source0:' "${_SOURCE}"
     [ -n "${_URL}" ] && echo 'URL:' "${_URL}"
     [ -n "${_BUILDREQUIRES}" ] && echo 'BuildRequires:'"${_BUILDREQUIRES}"
-    [ -n "${_BUILDARCH}" ] && echo '#BuildArch:' "${_BUILDARCH}"
+    if "${_NOARCH}" ; then
+        echo '#BuildArch: noarch'
+    else
+        [ "${_RELEASE/.bin/}" != "${_RELEASE}" ] && echo '#ExclusiveArch: x86_64'
+    fi
     echo
     echo '%description'
     echo -e "${_DESCRIPTION}"
     echo
-    echo '%if 0'
-    echo '  %package devel'
-    echo '  Summary: Development files for %{name}'
-    echo '  Requires: %{name} = %{version}-%{release}'
-    echo
-    echo '  %description devel'
-    echo '  The %{name}-devel package contains libraries and header files for'
-    echo '  developing applications that use %{name}.'
-    echo '%endif'
-    echo
+    if ! "${_NOARCH}" ; then
+        echo '%if 0'
+        echo '%package devel'
+        echo 'Summary: Development files for %{name}'
+        echo 'Requires: %{name} = %{version}-%{release}'
+        echo
+        echo '%description devel'
+        echo 'The %{name}-devel package contains libraries and header files for'
+        echo 'developing applications that use %{name}.'
+        echo '%endif'
+        echo
+    fi
     echo '%prep'
     echo '%setup' "${_SETUP}"
     echo
     echo '%build'
     [ -n "${_SUBDIR}" ] && echo 'cd' "${_SUBDIR}"
-    "${_COMPAT}" && echo "export CFLAGS+='${_COMPATCFLAGS}' CXXFLAGS+='${_COMPATCXXFLAGS}' CPPFLAGS+='${_COMPATCXXFLAGS}'"
     [ -n "${_BUILDSET}" ] && echo -e "${_BUILDSET}"
+    "${_COMPAT}" && echo "export CFLAGS+=' ${_COMPATCFLAGS}' CXXFLAGS+=' ${_COMPATCXXFLAGS}' CPPFLAGS+=' ${_COMPATCXXFLAGS}'"
     "${_COMPAT}" && [ "${_TOOLCHAIN}" = autoreconf ] && echo "cp -f /usr/lib/rpm/redhat/config.* ."
     "${_COMPAT}" && [ "${_TOOLCHAIN}" = cmake ] && echo "sed -i 's|-Wall|${_COMPATCFLAGS} ${_COMPATCXXFLAGS}|' CMakeLists.txt"
     "${_COMPAT}" && echo "if [ -n \"\`find . -type f -name 'configure*'\`\" ];then sed -i -e 's|-Wall|${_COMPATCFLAGS} ${_COMPATCXXFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`;fi"
@@ -501,41 +521,46 @@ function _output_data {
     echo
     echo '%install'
     [ -n "${_SUBDIR}" ] && echo 'cd' "${_SUBDIR}"
-    echo "install -d %{buildroot}%{_bindir} %{buildroot}/usr/local/bin %{buildroot}%{_datadir} %{buildroot}/usr/local/share"
+    "${_COMPAT}" || echo "install -d %{buildroot}%{_bindir} %{buildroot}/usr/local/bin %{buildroot}%{_datadir} %{buildroot}/usr/local/share"
     "${_COMPAT}" && echo '#No install' || echo -e "${_INSTALL}"
     echo
     echo '%files'
     [ -n "${_DOCS}" ] && echo '%doc'"${_DOCS}"
     echo '/'
     echo '%if 0'
-    echo '  %{_docdir}/%{name}'
-    echo '  %{_bindir}/%{name}'
-    echo '  %{_sbindir}/%{name}'
-    echo '  %{_libexecdir}/%{name}'
-    echo '  %{_libdir}/*.so.*'
-    echo '  %{_datadir}/%{name}'
-    echo '  %{_mandir}/man?/*'
-    echo '  %{_infodir}/*.info*'
-    echo '  %{_datadir}/icons/hicolor/*/*/%{name}.*'
-    echo '  %{_datadir}/locale/*/LC_MESSAGES/%{name}.mo'
-    echo '  %{_datadir}/pixmaps/%{name}.*'
-    echo '  %{_sysconfdir}/%{name}.*'
-    echo '  %{python2_sitearch}/*'
-    echo '  %{python2_sitelib}/*'
-    echo '  %{python3_sitearch}/*'
-    echo '  %{python3_sitelib}/*'
-    echo '  %{gem_spec}'
-    echo '  %{gem_instdir}'
-    echo '  %exclude %{gem_cache}'
-    echo '  %exclude %{_datadir}/icons/*/icon-theme.cache'
-    echo '  %exclude %{_infodir}/dir'
-    echo
-    echo '  %files devel'
-    echo '  %{_libdir}/*.so'
-    echo '  %{_libdir}/*.a'
-    echo '  %{_libdir}/pkgconfig/%{name}.pc'
-    echo '  %{_includedir}/*.h'
-    echo '  %{_includedir}/%{name}'    
+    echo '%{_docdir}/%{name}'
+    echo '%{_bindir}/%{name}'
+    echo '%{_sbindir}/%{name}'
+    echo '%{_libexecdir}/%{name}'
+    echo '%{_libdir}/*.so.*'
+    echo '%{_datadir}/%{name}'
+    echo '%{_mandir}/man?/*'
+    echo '%{_infodir}/*.info*'
+    echo '%{_datadir}/applications/%{name}.desktop'
+    echo '%{_datadir}/icons/hicolor/*/*/%{name}.*'
+    echo '%{_datadir}/locale/*/LC_MESSAGES/%{name}.mo'
+    echo '%{_datadir}/pixmaps/%{name}.*'
+    echo '%{_sysconfdir}/%{name}.*'
+    echo '%{_sysconfdir}/profile.d/%{name}.*sh'
+    echo '%{python2_sitearch}/*'
+    echo '%{python2_sitelib}/*'
+    echo '%{python3_sitearch}/*'
+    echo '%{python3_sitelib}/*'
+    echo '%{gem_spec}'
+    echo '%{gem_instdir}'
+    echo '%{nodejs_sitelib}/%{name}'
+    echo '%exclude %{gem_cache}'
+    echo '%exclude %{_datadir}/icons/*/icon-theme.cache'
+    echo '%exclude %{_infodir}/dir'
+    if ! "${_NOARCH}" ; then
+        echo
+        echo '%files devel'
+        echo '%{_libdir}/*.so'
+        echo '%{_libdir}/*.a'
+        echo '%{_libdir}/pkgconfig/%{name}.pc'
+        echo '%{_includedir}/*.h'
+        echo '%{_includedir}/%{name}'
+    fi
     echo '%endif'
     echo
     echo '%changelog'

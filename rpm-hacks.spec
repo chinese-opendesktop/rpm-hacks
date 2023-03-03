@@ -1,5 +1,5 @@
 Name:		rpm-hacks
-Version:	2022.10
+Version:	2023.3
 Release:	1
 Summary:	RPM hacks utilities
 Group:		Applications/Engineering
@@ -37,7 +37,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/*
 
 %changelog
-* Sun Oct 30 2022 Wei-Lun Chao <bluebat@member.fsf.org> - 2022.10
+* Sun Feb 26 2023 Wei-Lun Chao <bluebat@member.fsf.org> - 2023.3
 - Rebuilt for Fedora
 * Thu Dec 20 2012 Robert Wei <robert.wei@ossii.com.tw> - 2012.12
 - First build

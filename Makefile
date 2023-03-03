@@ -1,4 +1,4 @@
-VERSION = 2022.10
+VERSION = 2023.3
 DESTDIR =
 PREFIX = /usr
 PACKAGE = rpm-hacks
