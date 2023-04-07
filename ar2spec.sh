@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2023.03.03"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2023.04.06"
 _ERROR=true
 _COMPAT=false
 while [ -n "$1" ] ; do
@@ -50,14 +50,15 @@ function _initial_variables {
     _URL=""
     _BUILDREQUIRES=""
     _NOARCH=false
+    _WITHCXX=false
     _DESCRIPTION="No description."
     _SETUP="-q"
     _TOOLCHAIN=""
     _SUBDIR=""
-    _COMPATCFLAGS="-Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
-    _COMPATCXXFLAGS="-fpermissive -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
+    _CFLAGS="-Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
+    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
     _BUILDCONF=""
-    _BUILDMAKE="#No build"
+    _BUILDMAKE="#Disable build"
     _INSTALL="false"
     _DOCS=""
     _DATE=$(LC_ALL=C date '+%a %b %d %Y')
@@ -129,7 +130,7 @@ function _set_attributes {
         fi
     fi
     _PKGNAME="$(echo ${_PKGNAME}|sed -e 's|^[0-9]*-||' -e 's|~[0-9a-z]*_||')"
-    [ -z "${_NAME}" ] && _NAME="${_PKGNAME,,}"
+    [ -z "${_NAME}" ] && _NAME="${_PKGNAME,,}" _NAME="${_NAME/./-}"
     _SRCNAME=${_SOURCE}
     _SRCNAME=${_SRCNAME/${_NAME}/%\{name\}}
     _SRCNAME=${_SRCNAME/${_VERSION}/%\{version\}}
@@ -161,14 +162,15 @@ function _set_attributes {
         [ -z "${_URL}" ] && _url_launchpad
     elif [ "${_URLSITE}" = sourceforge ] ; then
         _url_sourceforge
-        [ -z "${_URL}" ] && _url_github
         [ -z "${_URL}" ] && _url_launchpad
+        [ -z "${_URL}" ] && _url_github
     fi
     [ -z "${_SUMMARY}" ] && _SUMMARY="No summary"
 }
 
 function _enter_directory {
     pushd "${_TEMPDIR}" > /dev/null
+    rm -rf __MACOSX/
     _DIRNUM=$(ls|wc -l)
     if [ "${_DIRNUM}" -eq 0 ] ; then
         echo "ERROR! No files found." >&2
@@ -187,8 +189,12 @@ function _enter_directory {
     fi
     _FINDFILE=$(find . -type f -name '*.spec' -print -quit)
     [ -n "${_FINDFILE}" ] && _COMMENT="See ${_FINDFILE} in Source."
-    _FINDFILE=$(find . -type f -iregex '.*\.\(c\|cc\|cpp\|c\+\+\|cxx\|cs\|go\|hs\|pas\|swift\|adb\|f\|f77\|f90\|f95\|rs\|vala\|ml\)')
-    [ -z "${_FINDFILE}" ] && _NOARCH=true
+    find . -type f -iregex '.*\.\(c\|cc\|cpp\|c\+\+\|cxx\|cs\|go\|hs\|pas\|swift\|adb\|f\|f77\|f90\|f95\|rs\|vala\|ml\)' -quit
+    if [ $? -ne 0 ] ; then
+        _NOARCH=true
+    elif find . -type f -iregex '.*\.\(cc\|cpp\|c\+\+\|cxx\)' -quit ; then
+        _WITHCXX=true
+    fi
     for f in COPYING COPYING.L* LICENSE AUTHORS NEWS CHANGELOG ChangeLog README TODO THANKS TRANSLATION *.pdf *.rst *.md *.txt ; do
         if [ -f "$f" -a "$f" != CMakeLists.txt -a "$f" != meson_options.txt ] ; then
             [ "${f/ /}" = "$f" ] && _DOCS+=" $f" || _DOCS+=" \"$f\""
@@ -232,7 +238,7 @@ function _enter_directory {
             grep -qs '\(python2\|print "\)' * && _TOOLCHAIN="python2" || _TOOLCHAIN="python3"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)" ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)"
-            _TOOLCHAIN="make-f"
+            _TOOLCHAIN="makefile"
         elif [ -f Cargo.toml ] ; then
             _TOOLCHAIN="cargo"
         elif [ -f go.mod ] ; then
@@ -255,14 +261,18 @@ function _enter_directory {
             _TOOLCHAIN="maven"
         elif [ -f dune ] ; then
             _TOOLCHAIN="dune"
-        elif [ -f Setup.hs ] ; then
+        elif [ -f "$(find . -maxdepth 1 -type f -name '*.cabal' -print -quit)" ] ; then
             _TOOLCHAIN="cabal"
+        elif [ -f stack.yaml ] ; then
+            _TOOLCHAIN="stack"
+        elif [ -f Setup.hs ] ; then
+            _TOOLCHAIN="ghc"
         elif [ -f Makefile.PL ] ; then
             _TOOLCHAIN="perl"
         elif [ -f Makefile -o -f makefile -o -f GNUmakefile ] ; then
             _TOOLCHAIN="make"
-        elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(c\|cc\|cpp\)' -print -quit)" ] ; then
-            _TOOLCHAIN="gcc"
+        elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(c\|cc\|cpp\|c\+\+\|cxx\)' -print -quit)" ] ; then
+            _TOOLCHAIN="cc"
         elif [ -f package.json ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|index\).*\.js' -print -quit)"
             _TOOLCHAIN="nodejs"
@@ -306,43 +316,43 @@ function _enter_directory {
 function _set_scripts {
     if [ "${_TOOLCHAIN}" = bootstrap ] ; then
         _BUILDREQUIRES+=" automake"
-        _BUILDCONF="./bootstrap.sh\n#{configure}\n./configure"
-        _BUILDMAKE="#{make_build}\nmake"
+        "${_COMPAT}" && _BUILDCONF="chmod +x bootstrap.sh\n./bootstrap.sh\n./configure" || _BUILDCONF="./bootstrap.sh\n%{configure}"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = autogen ] ; then
         _BUILDREQUIRES+=" automake"
-        _BUILDCONF="chmod +x autogen.sh\n./autogen.sh\n#{configure}\n./configure"
-        _BUILDMAKE="#{make_build}\nmake"
+        "${_COMPAT}" && _BUILDCONF="chmod +x autogen.sh\n./autogen.sh\n./configure" || _BUILDCONF="./autogen.sh\n%{configure}"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = autoreconf ] ; then
         _BUILDREQUIRES+=" automake"
-        _BUILDCONF="autoreconf -ifv\n#{configure}\n./configure"
-        _BUILDMAKE="#{make_build}\nmake"
+        "${_COMPAT}" && _BUILDCONF="autoreconf -ifv\n./configure" || _BUILDCONF="autoreconf -ifv\n%{configure}"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = configure ] ; then
         _BUILDREQUIRES+=" automake"
-        _BUILDCONF="chmod +x configure\n#{configure}\n./configure"
-        _BUILDMAKE="#{make_build}\nmake"
+        "${_COMPAT}" && _BUILDCONF="chmod +x configure\n./configure" || _BUILDCONF="%{configure}"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = cmake ] ; then
         _BUILDREQUIRES+=" cmake"
-        _BUILDCONF="#{cmake}\nmkdir -p build;cd build;cmake .."
-        _BUILDMAKE="#{cmake_build}\nmake"
-        _INSTALL="#{cmake_install}\ncd build;make install"
+        "${_COMPAT}" && _BUILDCONF="mkdir -p build;cd build;cmake .." || _BUILDCONF="%{cmake}"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{cmake_build}"
+        _INSTALL="#cd build;#{make_install}\n%{cmake_install}"
     elif [ "${_TOOLCHAIN}" = qmake5 ] ; then
         _BUILDREQUIRES+=" qt5-qtbase-devel"
-        _BUILDCONF="qmake-qt5 -recursive\n#qmake-qt5 %{name}.pro\n#{qmake_qt5}"
-        _BUILDMAKE="#{make_build}\nmake"
+        "${_COMPAT}" && _BUILDCONF="#qmake-qt5 %{name}.pro\nqmake-qt5 -recursive" || _BUILDCONF="%{qmake_qt5}"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = qmake4 ] ; then
         _BUILDREQUIRES+=" qt4-devel"
-        _BUILDCONF="qmake-qt4 -recursive\n#qmake-qt4 %{name}.pro\n#{qmake_qt4}"
-        _BUILDMAKE="#{make_build}\nmake"
+        "${_COMPAT}" && _BUILDCONF="#qmake-qt4 %{name}.pro\nqmake-qt4 -recursive" || _BUILDCONF="%{qmake_qt4}"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = imake ] ; then
         _BUILDREQUIRES+=" imake"
         _BUILDCONF="xmkmf -a"
-        _BUILDMAKE="%{make_build}"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = python2 ] ; then
         _BUILDREQUIRES+=" python2-devel"
@@ -353,10 +363,10 @@ function _set_scripts {
         _BUILDMAKE="%{py3_build}"
         _INSTALL="%{py3_install}"
     elif [ "${_TOOLCHAIN}" = make ] ; then
-        _BUILDMAKE="#{make_build}\nmake"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = make-f ] ; then
-        _BUILDMAKE="make -f ${_BUILDFILE#./}||%{make_build} -f ${_BUILDFILE#./}"
+    elif [ "${_TOOLCHAIN}" = makefile ] ; then
+        "${_COMPAT}" && _BUILDMAKE="make -f ${_BUILDFILE#./}" || _BUILDMAKE="%{make_build} -f ${_BUILDFILE#./}"
         _INSTALL="%{make_install} -f ${_BUILDFILE#./}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = cargo ] ; then
         _BUILDREQUIRES+=" cargo"
@@ -374,7 +384,7 @@ function _set_scripts {
         _INSTALL="%{meson_install}"
     elif [ "${_TOOLCHAIN}" = ninja ] ; then
         _BUILDREQUIRES+=" ninja-build"
-        _BUILDMAKE="%{ninja_build}"
+        "${_COMPAT}" && _BUILDMAKE="ninja" || _BUILDMAKE="%{ninja_build}"
         _INSTALL="%{ninja_install}"
     elif [ "${_TOOLCHAIN}" = scons ] ; then
         _BUILDREQUIRES+=" python3-scons"
@@ -414,16 +424,25 @@ function _set_scripts {
         _BUILDMAKE="dune build"
         _INSTALL="dune install --destdir=%{buildroot}"
     elif [ "${_TOOLCHAIN}" = cabal ] ; then
-        _BUILDREQUIRES+=" cabal-install"
+        _BUILDREQUIRES+=" ghc cabal-install"
         _BUILDCONF="cabal update\ncabal install --only-dependencies"
         _BUILDMAKE="cabal build"
         _INSTALL="cabal install"
+    elif [ "${_TOOLCHAIN}" = stack ] ; then
+        _BUILDREQUIRES+=" ghc stack"
+        _BUILDMAKE="stack build"
+        _INSTALL="stack install"
+    elif [ "${_TOOLCHAIN}" = ghc ] ; then
+        _BUILDREQUIRES+=" ghc"
+        _BUILDCONF="runhaskell Setup.hs configure"
+        _BUILDMAKE="runhaskell Setup.hs build"
+        _INSTALL="runhaskell Setup.hs install"
     elif [ "${_TOOLCHAIN}" = perl ] ; then
         _BUILDREQUIRES+=" perl-devel"
         _NOARCH=true
-        _BUILDMAKE="perl Makefile.PL INSTALLDIRS=vendor\n#%{make_build}\nmake"
+        _BUILDMAKE="perl Makefile.PL INSTALLDIRS=vendor\n#%{make_build}\nmake -j1"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = gcc ] ; then
+    elif [ "${_TOOLCHAIN}" = cc ] ; then
         _BUILDMAKE="make %{name}"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = nodejs ] ; then
@@ -511,18 +530,28 @@ function _output_data {
     echo '%build'
     [ -n "${_SUBDIR}" ] && echo 'cd' "${_SUBDIR}"
     [ -n "${_BUILDSET}" ] && echo -e "${_BUILDSET}"
-    "${_COMPAT}" && echo "export CFLAGS+=' ${_COMPATCFLAGS}' CXXFLAGS+=' ${_COMPATCXXFLAGS}' CPPFLAGS+=' ${_COMPATCXXFLAGS}'"
-    "${_COMPAT}" && [ "${_TOOLCHAIN}" = autoreconf ] && echo "cp -f /usr/lib/rpm/redhat/config.* ."
-    "${_COMPAT}" && [ "${_TOOLCHAIN}" = cmake ] && echo "sed -i 's|-Wall|${_COMPATCFLAGS} ${_COMPATCXXFLAGS}|' CMakeLists.txt"
-    "${_COMPAT}" && echo "if [ -n \"\`find . -type f -name 'configure*'\`\" ];then sed -i -e 's|-Wall|${_COMPATCFLAGS} ${_COMPATCXXFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`;fi"
+    if "${_COMPAT}" ; then
+        echo "export CFLAGS+=' ${_CFLAGS}' LDFLAGS+=' -Wl,--allow-multiple-definition'"
+        "${_WITHCXX}" && echo "export CXXFLAGS+=' ${_CXXFLAGS}' CPPFLAGS+=' ${_CXXFLAGS}'"
+        [ "${_TOOLCHAIN}" = configure ] && echo "cp -f /usr/lib/rpm/redhat/config.* ."
+        "${_WITHCXX}" && _CFLAGS+=" ${_CXXFLAGS}"
+        [ "${_TOOLCHAIN}" = cmake ] && echo "sed -i 's|-Wall|${_CFLAGS}|' CMakeLists.txt"
+        [ "${_BUILDCONF/configure/}" != "${_BUILDCONF}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure'\`"
+    fi
     [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
-    "${_COMPAT}" && echo "if [ -n \"\`find . -type f -name '[Mm]akefile*'\`\" ];then sed -i -e 's|-Wall|${_COMPATCFLAGS} ${_COMPATCXXFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`;fi"
+    if "${_COMPAT}" ; then
+        [ "${_BUILDMAKE/make_build/}" != "${_BUILDMAKE}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`"
+    fi
     echo -e "${_BUILDMAKE}"
     echo
     echo '%install'
     [ -n "${_SUBDIR}" ] && echo 'cd' "${_SUBDIR}"
-    "${_COMPAT}" || echo "install -d %{buildroot}%{_bindir} %{buildroot}/usr/local/bin %{buildroot}%{_datadir} %{buildroot}/usr/local/share"
-    "${_COMPAT}" && echo '#No install' || echo -e "${_INSTALL}"
+    if "${_COMPAT}" ; then
+        echo '#Disable install'
+    else
+        echo "install -d %{buildroot}%{_bindir} %{buildroot}/usr/local/bin %{buildroot}%{_datadir} %{buildroot}/usr/local/share"
+        echo -e "${_INSTALL}"
+    fi
     echo
     echo '%files'
     [ -n "${_DOCS}" ] && echo '%doc'"${_DOCS}"
