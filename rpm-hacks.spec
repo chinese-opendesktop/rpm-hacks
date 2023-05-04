@@ -9,6 +9,8 @@ Requires:	dpkg
 Requires:	funionfs
 Requires:	fakechroot
 Requires:	fuse
+Requires:       curl
+Requires:       wget
 BuildArch:	noarch
 
 %description

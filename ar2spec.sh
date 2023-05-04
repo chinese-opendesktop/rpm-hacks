@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2023.04.06"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2023.05.04"
 _ERROR=true
 _COMPAT=false
 while [ -n "$1" ] ; do
@@ -55,7 +55,7 @@ function _initial_variables {
     _SETUP="-q"
     _TOOLCHAIN=""
     _SUBDIR=""
-    _CFLAGS="-Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
+    _CFLAGS="-Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc -I/usr/include/compat-ffmpeg4"
     _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
     _BUILDCONF=""
     _BUILDMAKE="#Disable build"
@@ -113,7 +113,8 @@ function _set_attributes {
     _BASENAME="${_BASENAME/[._-][Aa]ll/}"
     _BASENAME="${_BASENAME/[._-][Oo]rig/}"
     _BASENAME="${_BASENAME/[._-][Pp]ortable/}"
-    _PKGNAME="${_BASENAME%%[_-][0-9]*}"
+    _PKGNAME="${_BASENAME%%[_-][Vv][0-9]*}"
+    [ "${_PKGNAME}" = "${_BASENAME}" ] && _PKGNAME="${_BASENAME%[-_][0-9]*}"
     [ "${_PKGNAME}" = "${_BASENAME}" ] && _PKGNAME="${_BASENAME%[-_]*}"
     [ "${_PKGNAME}" = "${_BASENAME}" ] && _PKGNAME="${_BASENAME%%[0-9]*}"
     _VERSION="${_BASENAME#${_PKGNAME}}"
@@ -141,20 +142,48 @@ function _set_attributes {
             if [ "${_VERSION}" = master -o "${_VERSION}" = main ] ; then
                 _SOURCE="${_URL}/archive/refs/heads/${_VERSION}.zip#/${_SRCNAME}"
                 _RELEASE="0"
+            elif wget -q --spider "${_URL}/releases/download/v${_VERSION}/${_SRCNAME}" ; then
+                _SOURCE="${_URL}/releases/download/v%{version}/${_SRCNAME}"
+            elif wget -q --spider "${_URL}/releases/download/${_VERSION}/${_SRCNAME}" ; then
+                _SOURCE="${_URL}/releases/download/%{version}/${_SRCNAME}"
+            elif wget -q --spider "${_URL}/archive/refs/tags/v${_VERSION}.tar.gz" ; then
+                _SOURCE="${_URL}/archive/refs/tags/v%{version}.tar.gz#/${_SRCNAME}"
+            elif wget -q --spider "${_URL}/archive/refs/tags/${_VERSION}.tar.gz" ; then
+                _SOURCE="${_URL}/archive/refs/tags/%{version}.tar.gz#/${_SRCNAME}"
             else
-                _SOURCE="${_URL}/archive/%{version}.tar.gz#/${_SRCNAME}"
+                _URL=""
             fi
         fi
     }
     function _url_sourceforge {
-        _URL="https://sourceforge.net/projects/${_NAME}"
-        _SUMMARY=$(curl -s --retry 1 "${_URL}/"|grep -im1 '<meta name="description" content="Download'|sed 's|<meta name="description" content="Download.*for free\.[ \r]*||'|sed 's|" />||'|sed 's|\..*||')
-        [ -z "${_SUMMARY}" ] && _URL="" || _SOURCE="${_URL}/files/${_SRCNAME}"
+        if wget -q --spider "https://sourceforge.net/projects/${_NAME}" ; then
+            _URL="https://sourceforge.net/projects/${_NAME}"
+            _SUMMARY=$(curl -s --retry 1 "${_URL}/"|grep -im1 '<meta name="description" content="Download'|sed 's|<meta name="description" content="Download.*for free\.[ \r]*||'|sed 's|" />||'|sed 's|\..*||')
+            if wget -q --spider "${_URL}/files/${_SRCNAME}" ; then
+                _SOURCE="${_URL}/files/${_SRCNAME}"
+            elif wget -q --spider "${_URL}/files/${_NAME}-${_VERSION}/${_SRCNAME}" ; then
+                _SOURCE="${_URL}/files/%{name}-%{version}/${_SRCNAME}"
+            elif wget -q --spider "${_URL}/files/${_NAME}/${_VERSION}/${_SRCNAME}" ; then
+                _SOURCE="${_URL}/files/%{name}/%{version}/${_SRCNAME}"
+            elif wget -q --spider "${_URL}/files/${_NAME}/${_NAME}-${_VERSION}/${_SRCNAME}" ; then
+                _SOURCE="${_URL}/files/%{name}/%{name}-%{version}/${_SRCNAME}"
+            fi
+        fi
     }
     function _url_launchpad {
-        _URL="https://launchpad.net/${_NAME}"
-        _SUMMARY=$(curl -s --retry 1 "${_URL}"|grep -im1 '<div class="summary"><p>'|sed 's|.*<div class="summary"><p>||'|sed 's|</p></div>||'|sed 's|\.$||')
-        [ -z "${_SUMMARY}" ] && _URL="" || _SOURCE="${_URL}/trunk/${_VERSION}/+download/${_SRCNAME}"
+        if wget -q --spider "https://launchpad.net/${_NAME}" ; then
+            _URL="https://launchpad.net/${_NAME}"
+            _SUMMARY=$(curl -s --retry 1 "${_URL}"|grep -im1 '<div class="summary"><p>'|sed 's|.*<div class="summary"><p>||'|sed 's|</p></div>||'|sed 's|\.$||')
+            if wget -q --spider "${_URL}/${_VERSION}/+download/${_SRCNAME}" ; then
+                _SOURCE="${_URL}/%{version}/+download/${_SRCNAME}"
+            elif wget -q --spider "${_URL}/trunk/${_VERSION}/+download/${_SRCNAME}" ; then
+                _SOURCE="${_URL}/trunk/%{version}/+download/${_SRCNAME}"
+            elif wget -q --spider "${_URL}/stable/${_VERSION}/+download/${_SRCNAME}" ; then
+                _SOURCE="${_URL}/stable/%{version}/+download/${_SRCNAME}"
+            elif wget -q --spider "${_URL}/${_VERSION%.*}/${_VERSION}/+download/${_SRCNAME}" ; then
+                _SOURCE="${_URL}/${_VERSION%.*}/%{version}/+download/${_SRCNAME}"
+            fi
+        fi
     }
     if [ "${_URLSITE}" = github ] ; then
         _url_github
@@ -162,8 +191,8 @@ function _set_attributes {
         [ -z "${_URL}" ] && _url_launchpad
     elif [ "${_URLSITE}" = sourceforge ] ; then
         _url_sourceforge
-        [ -z "${_URL}" ] && _url_launchpad
         [ -z "${_URL}" ] && _url_github
+        [ -z "${_URL}" ] && _url_launchpad
     fi
     [ -z "${_SUMMARY}" ] && _SUMMARY="No summary"
 }
@@ -220,13 +249,16 @@ function _enter_directory {
         fi
     fi
     function _check_toolchain {
-        if [ -f bootstrap.sh ] ; then
+        if [ -f bootstrap ] ; then
             _TOOLCHAIN="bootstrap"
+        elif [ -f bootstrap.sh ] ; then
+            _TOOLCHAIN="bootstrap.sh"
         elif [ -f autogen.sh ] ; then
-            _TOOLCHAIN="autogen"
+            _TOOLCHAIN="autogen.sh"
         elif [ -f configure.ac -o -f configure.in ] ; then
             _TOOLCHAIN="autoreconf"
         elif [ -f configure ] ; then
+            _BUILDFILE="$(find . -maxdepth 1 -type f -name 'config.guess' -print -quit)"
             _TOOLCHAIN="configure"
         elif [ -f CMakeLists.txt ] ; then
             _TOOLCHAIN="cmake"
@@ -234,11 +266,13 @@ function _enter_directory {
             grep -qis qt4 * && _TOOLCHAIN="qmake4" || _TOOLCHAIN="qmake5"
         elif [ -f Imakefile ] ; then
             _TOOLCHAIN="imake"
-        elif [ -f setup.py ] ; then
-            grep -qs '\(python2\|print "\)' * && _TOOLCHAIN="python2" || _TOOLCHAIN="python3"
+        elif [ -f Makefile -o -f makefile -o -f GNUmakefile ] ; then
+            _TOOLCHAIN="make"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)" ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)"
             _TOOLCHAIN="makefile"
+        elif [ -f setup.py ] ; then
+            grep -qs '\(python2\|print "\)' * && _TOOLCHAIN="python2" || _TOOLCHAIN="python3"
         elif [ -f Cargo.toml ] ; then
             _TOOLCHAIN="cargo"
         elif [ -f go.mod ] ; then
@@ -269,17 +303,15 @@ function _enter_directory {
             _TOOLCHAIN="ghc"
         elif [ -f Makefile.PL ] ; then
             _TOOLCHAIN="perl"
-        elif [ -f Makefile -o -f makefile -o -f GNUmakefile ] ; then
-            _TOOLCHAIN="make"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(c\|cc\|cpp\|c\+\+\|cxx\)' -print -quit)" ] ; then
             _TOOLCHAIN="cc"
         elif [ -f package.json ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|index\).*\.js' -print -quit)"
             _TOOLCHAIN="nodejs"
         elif [ -f index.theme ] ; then
-            [ -d 16x16 ] && _TOOLCHAIN="icon" || _TOOLCHAIN="theme"
+            [ -d 16x16 ] && _TOOLCHAIN="icon-theme" || _TOOLCHAIN="theme"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.tt?' -print -quit)" ] ; then
-            _TOOLCHAIN="font"
+            _TOOLCHAIN="fonts"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.jar' -print -quit)" ] ; then
             _TOOLCHAIN="jar"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.lpi' -print -quit)" ] ; then
@@ -316,10 +348,15 @@ function _enter_directory {
 function _set_scripts {
     if [ "${_TOOLCHAIN}" = bootstrap ] ; then
         _BUILDREQUIRES+=" automake"
+        "${_COMPAT}" && _BUILDCONF="chmod +x bootstrap\n./bootstrap\n./configure" || _BUILDCONF="./bootstrap\n%{configure}"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
+        _INSTALL="%{make_install}"
+    elif [ "${_TOOLCHAIN}" = bootstrap.sh ] ; then
+        _BUILDREQUIRES+=" automake"
         "${_COMPAT}" && _BUILDCONF="chmod +x bootstrap.sh\n./bootstrap.sh\n./configure" || _BUILDCONF="./bootstrap.sh\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = autogen ] ; then
+    elif [ "${_TOOLCHAIN}" = autogen.sh ] ; then
         _BUILDREQUIRES+=" automake"
         "${_COMPAT}" && _BUILDCONF="chmod +x autogen.sh\n./autogen.sh\n./configure" || _BUILDCONF="./autogen.sh\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
@@ -354,6 +391,12 @@ function _set_scripts {
         _BUILDCONF="xmkmf -a"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_TOOLCHAIN}" = make ] ; then
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
+        _INSTALL="%{make_install}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_TOOLCHAIN}" = makefile ] ; then
+        "${_COMPAT}" && _BUILDMAKE="make -f ${_BUILDFILE#./}" || _BUILDMAKE="%{make_build} -f ${_BUILDFILE#./}"
+        _INSTALL="%{make_install} -f ${_BUILDFILE#./}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = python2 ] ; then
         _BUILDREQUIRES+=" python2-devel"
         _BUILDMAKE="%{py2_build}"
@@ -362,12 +405,6 @@ function _set_scripts {
         _BUILDREQUIRES+=" python3-devel"
         _BUILDMAKE="%{py3_build}"
         _INSTALL="%{py3_install}"
-    elif [ "${_TOOLCHAIN}" = make ] ; then
-        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
-        _INSTALL="%{make_install}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = makefile ] ; then
-        "${_COMPAT}" && _BUILDMAKE="make -f ${_BUILDFILE#./}" || _BUILDMAKE="%{make_build} -f ${_BUILDFILE#./}"
-        _INSTALL="%{make_install} -f ${_BUILDFILE#./}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = cargo ] ; then
         _BUILDREQUIRES+=" cargo"
         _BUILDCONF="cargo update"
@@ -450,13 +487,13 @@ function _set_scripts {
         _NOARCH=true
         _INSTALL="mkdir -p %{buildroot}%{nodejs_sitelib}/%{name} %{buildroot}%{_bindir}\ncp -a * %{buildroot}%{nodejs_sitelib}/%{name}"
         _INSTALL+="\nln -s %{nodejs_sitelib}/%{name}/${_BUILDFILE#./} %{buildroot}%{_bindir}/%{name}\nrm -f %{buildroot}%{nodejs_sitelib}/%{name}/{*.md,LICENSE}"
-    elif [ "${_TOOLCHAIN}" = icon ] ; then
+    elif [ "${_TOOLCHAIN}" = icon-theme ] ; then
         _NOARCH=true
         _INSTALL="install -d %{buildroot}%{_datadir}/icons/${_SUBDIR:-$_NAME}\ncp -a * %{buildroot}%{_datadir}/icons/${_SUBDIR:-$_NAME}"
     elif [ "${_TOOLCHAIN}" = theme ] ; then
         _NOARCH=true
         _INSTALL="install -d %{buildroot}%{_datadir}/themes/${_SUBDIR:-$_NAME}\ncp -a * %{buildroot}%{_datadir}/themes/${_SUBDIR:-$_NAME}"
-    elif [ "${_TOOLCHAIN}" = font ] ; then
+    elif [ "${_TOOLCHAIN}" = fonts ] ; then
         _NOARCH=true
         _INSTALL="install -d %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}\ncp *.tt? %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}"
     elif [ "${_TOOLCHAIN}" = jar ] ; then
@@ -529,18 +566,19 @@ function _output_data {
     echo
     echo '%build'
     [ -n "${_SUBDIR}" ] && echo 'cd' "${_SUBDIR}"
+    [ -f "${_FILE}.set" ] && cat "${_FILE}.set"
     [ -n "${_BUILDSET}" ] && echo -e "${_BUILDSET}"
     if "${_COMPAT}" ; then
         echo "export CFLAGS+=' ${_CFLAGS}' LDFLAGS+=' -Wl,--allow-multiple-definition'"
         "${_WITHCXX}" && echo "export CXXFLAGS+=' ${_CXXFLAGS}' CPPFLAGS+=' ${_CXXFLAGS}'"
-        [ "${_TOOLCHAIN}" = configure ] && echo "cp -f /usr/lib/rpm/redhat/config.* ."
+        [ "${_TOOLCHAIN}" = configure ] && echo "cp -f /usr/lib/rpm/redhat/config.* ./`dirname ${_BUILDFILE}`"
         "${_WITHCXX}" && _CFLAGS+=" ${_CXXFLAGS}"
         [ "${_TOOLCHAIN}" = cmake ] && echo "sed -i 's|-Wall|${_CFLAGS}|' CMakeLists.txt"
-        [ "${_BUILDCONF/configure/}" != "${_BUILDCONF}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure'\`"
-    fi
-    [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
-    if "${_COMPAT}" ; then
-        [ "${_BUILDMAKE/make_build/}" != "${_BUILDMAKE}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`"
+        [ "${_BUILDCONF/configure/}" != "${_BUILDCONF}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`"
+        [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
+        [ "${_BUILDMAKE/make/}" != "${_BUILDMAKE}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`"
+    else
+        [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
     fi
     echo -e "${_BUILDMAKE}"
     echo
