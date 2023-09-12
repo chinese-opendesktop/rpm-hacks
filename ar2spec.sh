@@ -1,7 +1,7 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2023.07.26"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2023.09.12"
 _ERROR=true
-_SETFILE=false
+_BUILDSET=""
 _COMPAT=false
 while [ -n "$1" ] ; do
     _ERROR=false
@@ -133,8 +133,10 @@ function _set_attributes {
     _SRCNAME=${_SRCNAME/${_NAME}/%\{name\}}
     _SRCNAME=${_SRCNAME/${_VERSION}/%\{version\}}
     function _url_github {
-        _URL=$(curl -s --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 'https://github.com/[-0-9A-Za-z]*/'${_NAME}'&quot;'|sed 's|.*\(https://github.com/[-0-9A-Za-z]*/'${_NAME}'\).*|\1|i')
+#        _URL=$(curl -s --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 'https://github.com/[-0-9A-Za-z]*/'${_NAME}'&quot;'|sed 's|.*\(https://github.com/[-0-9A-Za-z]*/'${_NAME}'\).*|\1|i')
+        _URL=$(curl -s --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 '/<em>'${_NAME}'</em>","hl_trunc_description'|sed 's|/<em>[-0-9A-Za-z]*</em>","hl_trunc_description|\n|g'|grep -m1 hl_name|sed 's|.*hl_name":"||')
         if [ -n "${_URL}" ] ; then
+            _URL="https://github.com/"${_URL}"/"${_NAME}
             _SUMMARY=$(curl -s --retry 1 "${_URL}"|grep -im1 '<title>GitHub'|sed 's|.*<title>GitHub - .*/'${_NAME}': \([^.]*\).*</title>|\1|i')
             if [ "${_VERSION}" = master -o "${_VERSION}" = main ] ; then
                 _SOURCE="${_URL}/archive/refs/heads/${_VERSION}.zip#/${_SRCNAME}"
@@ -258,18 +260,24 @@ function _enter_directory {
         elif [ -f CMakeLists.txt ] ; then
             _TOOLCHAIN="cmake"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.pro' -print -quit)" ] ; then
-            _TOOLCHAIN="qmake6"
+            _TOOLCHAIN="qmake5"
             grep -qsi qt4 * && _TOOLCHAIN="qmake4"
-            grep -qsi qt5 * && _TOOLCHAIN="qmake5"
+            grep -qsi qt6 * && _TOOLCHAIN="qmake6"
         elif [ -f Imakefile ] ; then
             _TOOLCHAIN="imake"
         elif [ -f Makefile -o -f makefile -o -f GNUmakefile ] ; then
+            _TOOLCHAIN="make"
+        elif [ -f MAKEFILE ] ; then
+            [ -n "${_BUILDSET}" ] && _BUILDSET+="\n"
+            _BUILDSET+='for f in *;do mv $f ${f,,};done'
             _TOOLCHAIN="make"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)" ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)"
             _TOOLCHAIN="makefile"
         elif [ -f setup.py ] ; then
             grep -qs '\(python2\|print "\)' *.py */*.py && _TOOLCHAIN="python2" || _TOOLCHAIN="python3"
+        elif [ -f setup.cfg -o -f pyproject.toml ] ; then
+            _TOOLCHAIN="python-build"
         elif [ -f Cargo.toml ] ; then
             _TOOLCHAIN="cargo"
         elif [ -f go.mod ] ; then
@@ -375,7 +383,7 @@ function _set_scripts {
         _INSTALL="#cd build;#{make_install}\n%{cmake_install}"
     elif [ "${_TOOLCHAIN}" = qmake6 ] ; then
         _BUILDREQUIRES+=" qt6-qtbase-devel"
-        "${_COMPAT}" && _BUILDCONF="#qmake-qt6 %{name}.pro\nqmake-qt6 -recursive" || _BUILDCONF="%{qmake_qt6}"
+        "${_COMPAT}" && _BUILDCONF="#qmake6 %{name}.pro\nqmake6 -recursive" || _BUILDCONF="%{qmake_qt6}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = qmake5 ] ; then
@@ -407,6 +415,10 @@ function _set_scripts {
         _BUILDREQUIRES+=" python3-devel"
         _BUILDMAKE="%{py3_build}"
         _INSTALL="%{py3_install}"
+    elif [ "${_TOOLCHAIN}" = python-build ] ; then
+        _BUILDREQUIRES+=" python3-build"
+        _BUILDMAKE="python3 -m build"
+        _INSTALL="pip install ."
     elif [ "${_TOOLCHAIN}" = cargo ] ; then
         _BUILDREQUIRES+=" cargo"
         _BUILDCONF="cargo update"
@@ -514,8 +526,8 @@ function _set_scripts {
         _NOARCH=true
         _INSTALL="install -Dm755 ${_BUILDFILE#./} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE#./}"
     elif [ "${_TOOLCHAIN}" = shell ] ; then
-        _BUILDMAKE="if [ -f build.sh ]\nbash build.sh\nfi"
-        _INSTALL="if [ -f install.sh ]\nsed -i 's| /usr| %{buildroot}/usr|' install.sh\nbash install.sh\nfi"
+        _BUILDMAKE="if [ -f build.sh ];then\nbash build.sh\nfi"
+        _INSTALL="if [ -f install.sh ];then\nsed -i 's|/usr|%{buildroot}/usr|' install.sh\nbash install.sh\nfi"
     elif [ "${_TOOLCHAIN}" = filesystem ] ; then
         _INSTALL="install -d %{buildroot}\ncp -a * %{buildroot}"
         if find . -type f -exec file '{}' \; | grep -qsim1 ELF ; then
@@ -568,16 +580,21 @@ function _output_data {
     echo '%setup' "${_SETUP}"
     echo
     echo '%build'
-    [ -n "${_SUBDIR}" ] && echo 'cd' "${_SUBDIR}"
     [ -n "${_BUILDSET}" ] && echo -e "${_BUILDSET}"
-    [ -f "${_FILE}.set" ] && cat "${_FILE}.set" || echo "No ${_FILE}.set to be included." >&2
+    [ -n "${_SUBDIR}" ] && echo 'cd' "${_SUBDIR}"
+    if [ -f "${_FILE}.set" ] ; then
+        cat "${_FILE}.set"
+        echo "#An optional ${_FILE}.set has been included." >&2
+    elif "${_COMPAT}" ; then
+        echo "#No optional ${_FILE}.set to be included." >&2
+    fi
     if "${_COMPAT}" ; then
         echo "export CFLAGS+=' ${_CFLAGS}' LDFLAGS+=' -Wl,--allow-multiple-definition'"
         "${_WITHCXX}" && echo "export CXXFLAGS+=' ${_CXXFLAGS}' CPPFLAGS+=' ${_CXXFLAGS}'"
         [ "${_TOOLCHAIN}" = configure ] && echo "cp -f /usr/lib/rpm/redhat/config.* `dirname ./${_BUILDFILE}`"
         "${_WITHCXX}" && _CFLAGS+=" ${_CXXFLAGS}"
         [ "${_TOOLCHAIN}" = cmake ] && echo -e "rm -f CMakeCache.txt\nsed -i 's|-Wall|${_CFLAGS}|' CMakeLists.txt"
-        [ "${_BUILDCONF/configure/}" != "${_BUILDCONF}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`"
+        [ "${_BUILDCONF/\/configure/}" != "${_BUILDCONF}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`"
         [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
         [ "${_BUILDMAKE/make/}" != "${_BUILDMAKE}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`"
     else
@@ -588,7 +605,8 @@ function _output_data {
     echo '%install'
     [ -n "${_SUBDIR}" ] && echo 'cd' "${_SUBDIR}"
     if "${_COMPAT}" ; then
-        echo '#Disable install'
+        echo '#Install disabled'
+        echo '#Install disabled.' >&2
     else
         echo "install -d %{buildroot}%{_bindir} %{buildroot}/usr/local/bin %{buildroot}%{_datadir} %{buildroot}/usr/local/share"
         echo -e "${_INSTALL}"
