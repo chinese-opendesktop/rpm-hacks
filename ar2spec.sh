@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.01.16"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.03.14"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -280,7 +280,7 @@ function _enter_directory {
             _TOOLCHAIN="python-build"
         elif [ -f Cargo.toml ] ; then
             _TOOLCHAIN="cargo"
-        elif [ -f go.mod ] ; then
+        elif [ -f main.go ] ; then
             _TOOLCHAIN="golang"
         elif [ -f meson.build ] ; then
             _TOOLCHAIN="meson"
@@ -463,12 +463,12 @@ function _set_scripts {
     elif [ "${_TOOLCHAIN}" = ant ] ; then
         _BUILDREQUIRES+=" java-devel-openjdk ant"
         _NOARCH=true
-        _BUILDMAKE="ant"
+        _BUILDMAKE="export JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8\nant"
         _INSTALL="install -d %{buildroot}%{_datadir}/%{name}\ncp -a dist/* %{buildroot}%{_datadir}/%{name}"
     elif [ "${_TOOLCHAIN}" = maven ] ; then
         _BUILDREQUIRES+=" java-devel-openjdk maven"
         _NOARCH=true
-        _BUILDMAKE="mvn -e package"
+        _BUILDMAKE="export JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8\nmvn -e package"
         _INSTALL="install -d %{buildroot}%{_datadir}/%{name}\ninstall -m644 %{name}.jar %{buildroot}%{_datadir}/%{name}"
     elif [ "${_TOOLCHAIN}" = dune ] ; then
         _BUILDREQUIRES+=" ocaml-dune"
