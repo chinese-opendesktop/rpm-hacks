@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.03.14"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.06.11"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -52,10 +52,10 @@ function _initial_variables {
     _SETUP="-q"
     _TOOLCHAIN=""
     _SUBDIR=""
-    _CFLAGS="-Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -fallow-argument-mismatch -Wl,--allow-multiple-definition -Wno-narrowing -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
-    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
+    _CFLAGS="-Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -fallow-argument-mismatch -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
+    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
     _BUILDCONF=""
-    _BUILDMAKE="#Disable build"
+    _BUILDMAKE="false"
     _INSTALL="false"
     _DOCS=""
     _DATE=$(LC_ALL=C date '+%a %b %d %Y')
@@ -265,6 +265,8 @@ function _enter_directory {
             grep -qsi qt6 * && _TOOLCHAIN="qmake6"
         elif [ -f Imakefile ] ; then
             _TOOLCHAIN="imake"
+        elif [ -f config.sh ] ; then
+            _TOOLCHAIN="config.sh"
         elif [ -f Makefile -o -f makefile -o -f GNUmakefile ] ; then
             _TOOLCHAIN="make"
         elif [ -f MAKEFILE ] ; then
@@ -353,52 +355,56 @@ function _enter_directory {
 function _set_scripts {
     if [ "${_TOOLCHAIN}" = bootstrap ] ; then
         _BUILDREQUIRES+=" automake"
-        "${_COMPAT}" && _BUILDCONF="chmod +x bootstrap\n./bootstrap\n./configure" || _BUILDCONF="./bootstrap\n%{configure}"
+        "${_COMPAT}" && _BUILDCONF="chmod +x bootstrap\n./bootstrap||:\n./configure||:" || _BUILDCONF="./bootstrap\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = bootstrap.sh ] ; then
         _BUILDREQUIRES+=" automake"
-        "${_COMPAT}" && _BUILDCONF="chmod +x bootstrap.sh\n./bootstrap.sh\n./configure" || _BUILDCONF="./bootstrap.sh\n%{configure}"
+        "${_COMPAT}" && _BUILDCONF="chmod +x bootstrap.sh\n./bootstrap.sh||:\n./configure||:" || _BUILDCONF="./bootstrap.sh\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = autogen.sh ] ; then
         _BUILDREQUIRES+=" automake"
-        "${_COMPAT}" && _BUILDCONF="chmod +x autogen.sh\n./autogen.sh\n./configure" || _BUILDCONF="./autogen.sh\n%{configure}"
+        "${_COMPAT}" && _BUILDCONF="chmod +x autogen.sh\n./autogen.sh||:\n./configure||:" || _BUILDCONF="./autogen.sh\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = autoreconf ] ; then
         _BUILDREQUIRES+=" automake"
-        "${_COMPAT}" && _BUILDCONF="autoreconf -ifv\n./configure" || _BUILDCONF="autoreconf -ifv\n%{configure}"
+        "${_COMPAT}" && _BUILDCONF="autoreconf -ifv||:\n./configure||:" || _BUILDCONF="autoreconf -ifv\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = configure ] ; then
         _BUILDREQUIRES+=" automake"
-        "${_COMPAT}" && _BUILDCONF="chmod +x configure\n./configure" || _BUILDCONF="%{configure}"
+        "${_COMPAT}" && _BUILDCONF="chmod +x configure\n./configure||:" || _BUILDCONF="%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = cmake ] ; then
         _BUILDREQUIRES+=" cmake"
-        "${_COMPAT}" && _BUILDCONF="mkdir -p build;cd build;cmake .." || _BUILDCONF="%{cmake}"
+        "${_COMPAT}" && _BUILDCONF="mkdir -p build;cd build;cmake ..||:" || _BUILDCONF="%{cmake}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{cmake_build}"
         _INSTALL="#cd build;#{make_install}\n%{cmake_install}"
     elif [ "${_TOOLCHAIN}" = qmake6 ] ; then
         _BUILDREQUIRES+=" qt6-qtbase-devel"
-        "${_COMPAT}" && _BUILDCONF="#qmake6 %{name}.pro\nqmake6 -recursive" || _BUILDCONF="%{qmake_qt6}"
+        "${_COMPAT}" && _BUILDCONF="qmake6 -recursive||:" || _BUILDCONF="%{qmake_qt6}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = qmake5 ] ; then
         _BUILDREQUIRES+=" qt5-qtbase-devel"
-        "${_COMPAT}" && _BUILDCONF="#qmake-qt5 %{name}.pro\nqmake-qt5 -recursive" || _BUILDCONF="%{qmake_qt5}"
+        "${_COMPAT}" && _BUILDCONF="qmake-qt5 -recursive||:" || _BUILDCONF="%{qmake_qt5}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = qmake4 ] ; then
         _BUILDREQUIRES+=" qt4-devel"
-        "${_COMPAT}" && _BUILDCONF="#qmake-qt4 %{name}.pro\nqmake-qt4 -recursive" || _BUILDCONF="%{qmake_qt4}"
+        "${_COMPAT}" && _BUILDCONF="qmake-qt4 -recursive||:" || _BUILDCONF="%{qmake_qt4}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_TOOLCHAIN}" = imake ] ; then
         _BUILDREQUIRES+=" imake"
         _BUILDCONF="xmkmf -a"
+        "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
+        _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_TOOLCHAIN}" = config.sh ] ; then
+        "${_COMPAT}" && _BUILDCONF="chmod +x config.sh\n./config.sh||:" || _BUILDCONF="bash config.sh"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = make ] ; then
@@ -422,7 +428,7 @@ function _set_scripts {
     elif [ "${_TOOLCHAIN}" = cargo ] ; then
         _BUILDREQUIRES+=" cargo"
         "${_COMPAT}" && _BUILDCONF="cargo clean\ncargo update" || _BUILDCONF="cargo update"
-        "${_COMPAT}" && _BUILDMAKE="cargo build" || _BUILDMAKE="cargo build --release"
+        "${_COMPAT}" && _BUILDMAKE="cargo build -j 1" || _BUILDMAKE="cargo build --release"
         _INSTALL="cargo install --root=%{buildroot}%{_prefix} --path=.||install -Dm755 target/release/%{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = golang ] ; then
         _BUILDREQUIRES+=" golang"
@@ -527,8 +533,9 @@ function _set_scripts {
         _INSTALL="install -Dm755 ${_BUILDFILE#./} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE#./}"
     elif [ "${_TOOLCHAIN}" = shell ] ; then
         _BUILDMAKE="if [ -f build.sh ];then\nbash build.sh\nfi"
-        _INSTALL="if [ -f install.sh ];then\nsed -i 's|/usr|%{buildroot}/usr|' install.sh\nbash install.sh\nfi"
+        _INSTALL="if [ -f install.sh ];then\nsed -i 's|/usr|%{buildroot}/usr|' install.sh\nbash install.sh\nelse\ninstall -Dm755 %{name} %{buildroot}%{_bindir}/%{name}fi"
     elif [ "${_TOOLCHAIN}" = filesystem ] ; then
+        _BUILDMAKE="#Disable build"
         _INSTALL="install -d %{buildroot}\ncp -a * %{buildroot}"
         if find . -type f -exec file '{}' \; | grep -qsim1 ELF ; then
             _RELEASE+=".bin"
@@ -649,7 +656,8 @@ function _output_data {
         echo '%files devel'
         echo '%{_libdir}/*.so'
         echo '%{_libdir}/*.a'
-        echo '%{_libdir}/pkgconfig/%{name}.pc'
+        echo '%{_libdir}/%{name}'
+        echo '%{_libdir}/pkgconfig/*.pc'
         echo '%{_includedir}/*.h'
         echo '%{_includedir}/%{name}'
     fi
