@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.06.21"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.07.05"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -110,6 +110,7 @@ function _set_attributes {
     _BASENAME="${_BASENAME/[._-][Aa]ll/}"
     _BASENAME="${_BASENAME/[._-][Oo]rig/}"
     _BASENAME="${_BASENAME/[._-][Pp]ortable/}"
+    _BASENAME="${_BASENAME/[._-][Ss]table/}"
     _PKGNAME="${_BASENAME%%[_-][Vv][0-9]*}"
     [ "${_PKGNAME}" = "${_BASENAME}" ] && _PKGNAME="${_BASENAME%%[-_][0-9]*}"
     [ "${_PKGNAME}" = "${_BASENAME}" ] && _PKGNAME="${_BASENAME%[-_]*}"
@@ -336,7 +337,7 @@ function _enter_directory {
     }
     _check_toolchain
     if [ -z "${_TOOLCHAIN}" ] ; then
-        for d in [Ss]rc*/ [Ss]ource*/ [Ll]inux*/ */ ; do
+        for d in "${_NAME}"/ [Ss]rc*/ [Ss]ource*/ [Ll]inux*/ */ ; do
             if [ -d "$d" ] ; then
                 cd "$d"
                 _check_toolchain
