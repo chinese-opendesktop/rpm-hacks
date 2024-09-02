@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.07.05"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.09.02"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -274,8 +274,8 @@ function _enter_directory {
             [ -n "${_BUILDSET}" ] && _BUILDSET+="\n"
             _BUILDSET+='for f in *;do mv $f ${f,,};done'
             _TOOLCHAIN="make"
-        elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)" ] ; then
-            _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/makefile\.\(linux\|unix\|posix\|gcc\).*' -print -quit)"
+        elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/makefile.\(linux\|unix\|posix\|gcc\).*' -print -quit)" ] ; then
+            _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/makefile.\(linux\|unix\|posix\|gcc\).*' -print -quit)"
             _TOOLCHAIN="makefile"
         elif [ -f setup.py ] ; then
             grep -qs '\(python2\|print "\)' *.py */*.py && _TOOLCHAIN="python2" || _TOOLCHAIN="python3"
@@ -594,8 +594,11 @@ function _output_data {
     if [ -f "${_FILE}.set" ] ; then
         cat "${_FILE}.set"
         echo "#An optional ${_FILE}.set has been included." >&2
+    elif [ -f "${_NAME}.set" ] ; then
+        cat "${_NAME}.set"
+        echo "#An optional ${_NAME}.set has been included." >&2
     elif "${_COMPAT}" ; then
-        echo "#No optional ${_FILE}.set to be included." >&2
+        echo "#No optional ${_FILE}.set or ${_NAME}.set to be included." >&2
     fi
     if "${_COMPAT}" ; then
         echo "export CFLAGS=\${CFLAGS/-Werror=format-security/} CFLAGS+=' ${_CFLAGS}' LDFLAGS+=' -Wl,--allow-multiple-definition'"
