@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.09.02"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.09.12"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -33,6 +33,7 @@ if "${_ERROR}" ; then
     echo "Usage: $(basename $0) [-n|--name PKGNAME] [-p|--packager 'FULLNAME <EMAIL>'] [-s|--set SETTINGS] [-C|--compat] ARCHIVE" >&2
     exit 1
 fi
+ulimit -n 20000
 
 function _initial_variables {
     _USER="$(whoami)"
@@ -317,7 +318,9 @@ function _enter_directory {
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|index\).*\.js' -print -quit)"
             _TOOLCHAIN="nodejs"
         elif [ -f index.theme ] ; then
-            [ -d 16x16 ] && _TOOLCHAIN="icon-theme" || _TOOLCHAIN="theme"
+            [ -d 16x16 ] && _TOOLCHAIN="icon-theme" || _TOOLCHAIN="desktop-theme"
+        elif [ -f metacity-theme-1.xml ] ; then
+            _TOOLCHAIN="metacity-theme"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.tt?' -print -quit)" ] ; then
             _TOOLCHAIN="fonts"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.jar' -print -quit)" ] ; then
@@ -506,20 +509,33 @@ function _set_scripts {
     elif [ "${_TOOLCHAIN}" = nodejs ] ; then
         _BUILDREQUIRES+=" nodejs-devel"
         _NOARCH=true
+        _BUILDMAKE="#Disable build"
         _INSTALL="mkdir -p %{buildroot}%{nodejs_sitelib}/%{name} %{buildroot}%{_bindir}\ncp -a * %{buildroot}%{nodejs_sitelib}/%{name}"
         _INSTALL+="\nln -s %{nodejs_sitelib}/%{name}/${_BUILDFILE#./} %{buildroot}%{_bindir}/%{name}\nrm -f %{buildroot}%{nodejs_sitelib}/%{name}/{*.md,LICENSE}"
     elif [ "${_TOOLCHAIN}" = icon-theme ] ; then
         _NOARCH=true
+        _BUILDMAKE="#Disable build"
         _INSTALL="install -d %{buildroot}%{_datadir}/icons/${_SUBDIR:-$_NAME}\ncp -a * %{buildroot}%{_datadir}/icons/${_SUBDIR:-$_NAME}"
-    elif [ "${_TOOLCHAIN}" = theme ] ; then
+    elif [ "${_TOOLCHAIN}" = desktop-theme ] ; then
         _NOARCH=true
+        _BUILDMAKE="#Disable build"
         _INSTALL="install -d %{buildroot}%{_datadir}/themes/${_SUBDIR:-$_NAME}\ncp -a * %{buildroot}%{_datadir}/themes/${_SUBDIR:-$_NAME}"
+    elif [ "${_TOOLCHAIN}" = metacity-theme ] ; then
+        _NOARCH=true
+        _BUILDMAKE="#Disable build"
+        if [ -n "${_SUBDIR}" ] ; then
+            _INSTALL="install -d %{buildroot}%{_datadir}/themes/${_NAME}\ncp -a * %{buildroot}%{_datadir}/themes/${_NAME}"
+        else
+            _INSTALL="install -d %{buildroot}%{_datadir}/themes/${_NAME}/metacity-1\ncp -a * %{buildroot}%{_datadir}/themes/${_NAME}/metacity-1"
+        fi
     elif [ "${_TOOLCHAIN}" = fonts ] ; then
         _NOARCH=true
+        _BUILDMAKE="#Disable build"
         _INSTALL="install -d %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}\ncp *.tt? %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}"
     elif [ "${_TOOLCHAIN}" = jar ] ; then
         _RELEASE+=".bin"
         _NOARCH=true
+        _BUILDMAKE="#Disable build"
         _INSTALL="install -d %{buildroot}%{_datadir}/${_SUBDIR:-$_NAME}\ncp *.jar %{buildroot}%{_datadir}/${_SUBDIR:-$_NAME}"
     elif [ "${_TOOLCHAIN}" = lazarus ] ; then
         _BUILDREQUIRES+=" lazarus"
@@ -531,6 +547,7 @@ function _set_scripts {
         _INSTALL="install -Dm755 bin/Release/*/linux-x64/publish/%{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = script ] ; then
         _NOARCH=true
+        _BUILDMAKE="#Disable build"
         _INSTALL="install -Dm755 ${_BUILDFILE#./} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE#./}"
     elif [ "${_TOOLCHAIN}" = shell ] ; then
         _BUILDMAKE="if [ -f build.sh ];then\nbash build.sh\nfi"
