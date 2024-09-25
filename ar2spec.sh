@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.09.12"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.09.23"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -33,7 +33,6 @@ if "${_ERROR}" ; then
     echo "Usage: $(basename $0) [-n|--name PKGNAME] [-p|--packager 'FULLNAME <EMAIL>'] [-s|--set SETTINGS] [-C|--compat] ARCHIVE" >&2
     exit 1
 fi
-ulimit -n 20000
 
 function _initial_variables {
     _USER="$(whoami)"
@@ -112,6 +111,8 @@ function _set_attributes {
     _BASENAME="${_BASENAME/[._-][Oo]rig/}"
     _BASENAME="${_BASENAME/[._-][Pp]ortable/}"
     _BASENAME="${_BASENAME/[._-][Ss]table/}"
+    _BASENAME="${_BASENAME/[._-][Ff]ull/}"
+    _BASENAME="${_BASENAME/[._-][Cc]urrent/}"
     _PKGNAME="${_BASENAME%%[_-][Vv][0-9]*}"
     [ "${_PKGNAME}" = "${_BASENAME}" ] && _PKGNAME="${_BASENAME%%[-_][0-9]*}"
     [ "${_PKGNAME}" = "${_BASENAME}" ] && _PKGNAME="${_BASENAME%[-_]*}"
@@ -136,7 +137,7 @@ function _set_attributes {
     _SRCNAME=${_SRCNAME/${_VERSION}/%\{version\}}
     function _url_github {
 #        _URL=$(curl -s --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 'https://github.com/[-0-9A-Za-z]*/'${_NAME}'&quot;'|sed 's|.*\(https://github.com/[-0-9A-Za-z]*/'${_NAME}'\).*|\1|i')
-        _URL=$(curl -s --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 '/<em>'${_NAME}'</em>","hl_trunc_description'|sed 's|/<em>[-0-9A-Za-z]*</em>","hl_trunc_description|\n|g'|grep -m1 hl_name|sed 's|.*hl_name":"||')
+        _URL=$(curl -s --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 '/<em>'${_NAME}'</em>","hl_trunc_description'|sed 's|/<em>[-0-9A-Za-z_]*</em>","hl_trunc_description|\n|g'|grep -m1 hl_name|sed 's|.*hl_name":"||')
         if [ -n "${_URL}" ] ; then
             _URL="https://github.com/"${_URL}"/"${_NAME}
             _SUMMARY=$(curl -s --retry 1 "${_URL}"|grep -im1 '<title>GitHub'|sed 's|.*<title>GitHub - .*/'${_NAME}': \([^.]*\).*</title>|\1|i')
@@ -223,8 +224,8 @@ function _enter_directory {
     elif find . -type f -iregex '.*\.\(cc\|cpp\|c\+\+\|cxx\)' -quit ; then
         _WITHCXX=true
     fi
-    for f in COPYING COPYING.L* LICENSE AUTHORS NEWS CHANGELOG ChangeLog README TODO THANKS TRANSLATION *.pdf *.rst *.md *.txt ; do
-        if [ -f "$f" -a "$f" != CMakeLists.txt -a "$f" != meson_options.txt ] ; then
+    for f in COPYING* LICENSE* AUTHORS* NEWS* CHANGELOG* ChangeLog* README* TODO* THANKS* TRANSLATION* *.pdf *.rst *.md *.txt ; do
+        if [ -f "$f" -a "$f" != CMakeLists.txt -a "$f" != meson_options.txt -a "${_DOCS/ $f/}" = "${_DOCS}" ] ; then
             [ "${f/ /}" = "$f" ] && _DOCS+=" $f" || _DOCS+=" \"$f\""
         fi
     done
@@ -328,11 +329,15 @@ function _enter_directory {
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.lpi' -print -quit)" ] ; then
             _TOOLCHAIN="lazarus"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.csproj' -print -quit)" ] ; then
-            _TOOLCHAIN="dotnet"
+            _TOOLCHAIN="dotnet-csproj"
+        elif [ -f "$(find . -maxdepth 1 -type f -name '*.sln' -print -quit)" ] ; then
+            _TOOLCHAIN="dotnet-sln"
+        elif [ -f build.zig ] ; then
+            _TOOLCHAIN="zig"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)" ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)"
             _TOOLCHAIN="script"
-        elif [ -f build.sh -o -f install.sh ] ; then
+        elif [ -f build.sh -o -f make.sh -o -f install.sh ] ; then
             _TOOLCHAIN="shell"
         elif [ -d usr/bin -o -d usr/share ] ; then
             _TOOLCHAIN="filesystem"
@@ -541,17 +546,25 @@ function _set_scripts {
         _BUILDREQUIRES+=" lazarus"
         _BUILDMAKE="lazbuild --lazarusdir=%{_libdir}/lazarus --cpu=${HOSTTYPE} --widgetset=gtk2 -B *.lpi"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = dotnet ] ; then
+    elif [ "${_TOOLCHAIN}" = dotnet-csproj ] ; then
         _BUILDREQUIRES+=" dotnet-host"
-        _BUILDMAKE="dotnet publish *.csproj -r linux-x64 -c Release --no-self-contained"
+        _BUILDMAKE="dotnet publish *.csproj -c Release --no-self-contained"
         _INSTALL="install -Dm755 bin/Release/*/linux-x64/publish/%{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_TOOLCHAIN}" = dotnet-sln ] ; then
+        _BUILDREQUIRES+=" dotnet-host"
+        _BUILDMAKE="dotnet build *.sln -c Release"
+        _INSTALL="install -Dm755 Bld/Drops/Release/Binaries/net8.0/%{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_TOOLCHAIN}" = zig ] ; then
+        _BUILDREQUIRES+=" zig"
+        _BUILDMAKE="zig build -Doptimize=ReleaseFast"
+        _INSTALL="install -Dm755 zig-out/bin/%{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_TOOLCHAIN}" = script ] ; then
         _NOARCH=true
         _BUILDMAKE="#Disable build"
         _INSTALL="install -Dm755 ${_BUILDFILE#./} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE#./}"
     elif [ "${_TOOLCHAIN}" = shell ] ; then
-        _BUILDMAKE="if [ -f build.sh ];then\nbash build.sh\nfi"
-        _INSTALL="if [ -f install.sh ];then\nsed -i 's|/usr|%{buildroot}/usr|' install.sh\nbash install.sh\nelse\ninstall -Dm755 %{name} %{buildroot}%{_bindir}/%{name}fi"
+        _BUILDMAKE="if [ -f build.sh ];then\nbash build.sh\nelif [ -f make.sh ];then\nbash make.sh\nfi"
+        _INSTALL="if [ -f install.sh ];then\nsed -i 's|/usr|%{buildroot}/usr|' install.sh\nbash install.sh\nelse\ninstall -Dm755 %{name} %{buildroot}%{_bindir}/%{name}\nfi"
     elif [ "${_TOOLCHAIN}" = filesystem ] ; then
         _BUILDMAKE="#Disable build"
         _INSTALL="install -d %{buildroot}\ncp -a * %{buildroot}"
