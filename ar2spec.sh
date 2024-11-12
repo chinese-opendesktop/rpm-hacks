@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.09.23"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.11.08"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -50,10 +50,10 @@ function _initial_variables {
     _WITHCXX=false
     _DESCRIPTION="No description."
     _SETUP="-q"
-    _TOOLCHAIN=""
+    _BUILDSYS=""
     _SUBDIR=""
-    _CFLAGS="-Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -fallow-argument-mismatch -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
-    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
+    _CFLAGS="-Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
+    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
     _BUILDCONF=""
     _BUILDMAKE="false"
     _INSTALL="false"
@@ -248,109 +248,109 @@ function _enter_directory {
             _LICENSE="BSD"
         fi
     fi
-    function _check_toolchain {
+    function _check_buildsys {
         if [ -f bootstrap ] ; then
-            _TOOLCHAIN="bootstrap"
+            _BUILDSYS="bootstrap"
         elif [ -f bootstrap.sh ] ; then
-            _TOOLCHAIN="bootstrap.sh"
+            _BUILDSYS="bootstrap.sh"
         elif [ -f autogen.sh ] ; then
-            _TOOLCHAIN="autogen.sh"
+            _BUILDSYS="autogen.sh"
         elif [ -f configure.ac -o -f configure.in ] ; then
-            _TOOLCHAIN="autoreconf"
+            _BUILDSYS="autoreconf"
         elif [ -f configure ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -name 'config.guess' -print -quit)"
-            _TOOLCHAIN="configure"
+            _BUILDSYS="configure"
         elif [ -f CMakeLists.txt ] ; then
-            _TOOLCHAIN="cmake"
+            _BUILDSYS="cmake"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.pro' -print -quit)" ] ; then
-            _TOOLCHAIN="qmake5"
-            grep -qsi qt4 * && _TOOLCHAIN="qmake4"
-            grep -qsi qt6 * && _TOOLCHAIN="qmake6"
+            _BUILDSYS="qmake5"
+            grep -qsi qt4 * && _BUILDSYS="qmake4"
+            grep -qsi qt6 * && _BUILDSYS="qmake6"
         elif [ -f Imakefile ] ; then
-            _TOOLCHAIN="imake"
+            _BUILDSYS="imake"
         elif [ -f config.sh ] ; then
-            _TOOLCHAIN="config.sh"
+            _BUILDSYS="config.sh"
         elif [ -f Makefile -o -f makefile -o -f GNUmakefile ] ; then
-            _TOOLCHAIN="make"
+            _BUILDSYS="make"
         elif [ -f MAKEFILE ] ; then
             [ -n "${_BUILDSET}" ] && _BUILDSET+="\n"
             _BUILDSET+='for f in *;do mv $f ${f,,};done'
-            _TOOLCHAIN="make"
+            _BUILDSYS="make"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/makefile.\(linux\|unix\|posix\|gcc\).*' -print -quit)" ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/makefile.\(linux\|unix\|posix\|gcc\).*' -print -quit)"
-            _TOOLCHAIN="makefile"
+            _BUILDSYS="makefile"
         elif [ -f setup.py ] ; then
-            grep -qs '\(python2\|print "\)' *.py */*.py && _TOOLCHAIN="python2" || _TOOLCHAIN="python3"
+            _BUILDSYS="python3"
         elif [ -f setup.cfg -o -f pyproject.toml ] ; then
-            _TOOLCHAIN="python-build"
+            _BUILDSYS="python-build"
         elif [ -f Cargo.toml ] ; then
-            _TOOLCHAIN="cargo"
+            _BUILDSYS="cargo"
         elif [ -f main.go ] ; then
-            _TOOLCHAIN="golang"
+            _BUILDSYS="golang"
         elif [ -f meson.build ] ; then
-            _TOOLCHAIN="meson"
+            _BUILDSYS="meson"
         elif [ -f build.ninja ] ; then
-            _TOOLCHAIN="ninja"
+            _BUILDSYS="ninja"
         elif [ -f SConstruct ] ; then
-            _TOOLCHAIN="scons"
+            _BUILDSYS="scons"
         elif [ -f wscript ] ; then
-            _TOOLCHAIN="waf"
+            _BUILDSYS="waf"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.gemspec' -print -quit)" ] ; then
-            _TOOLCHAIN="gem"
+            _BUILDSYS="gem"
         elif [ -f Rakefile ] ; then
-            _TOOLCHAIN="rake"
+            _BUILDSYS="rake"
         elif [ -f build.xml ] ; then
-            _TOOLCHAIN="ant"
+            _BUILDSYS="ant"
         elif [ -f pom.xml ] ; then
-            _TOOLCHAIN="maven"
+            _BUILDSYS="maven"
         elif [ -f dune ] ; then
-            _TOOLCHAIN="dune"
+            _BUILDSYS="dune"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.cabal' -print -quit)" ] ; then
-            _TOOLCHAIN="cabal"
+            _BUILDSYS="cabal"
         elif [ -f stack.yaml ] ; then
-            _TOOLCHAIN="stack"
+            _BUILDSYS="stack"
         elif [ -f Setup.hs ] ; then
-            _TOOLCHAIN="ghc"
+            _BUILDSYS="ghc"
         elif [ -f Makefile.PL ] ; then
-            _TOOLCHAIN="perl"
+            _BUILDSYS="perl"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(c\|cc\|cpp\|c\+\+\|cxx\)' -print -quit)" ] ; then
-            _TOOLCHAIN="cc"
+            _BUILDSYS="cc"
         elif [ -f package.json ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|index\).*\.js' -print -quit)"
-            _TOOLCHAIN="nodejs"
+            _BUILDSYS="nodejs"
         elif [ -f index.theme ] ; then
-            [ -d 16x16 ] && _TOOLCHAIN="icon-theme" || _TOOLCHAIN="desktop-theme"
+            [ -d 16x16 ] && _BUILDSYS="icon-theme" || _BUILDSYS="desktop-theme"
         elif [ -f metacity-theme-1.xml ] ; then
-            _TOOLCHAIN="metacity-theme"
+            _BUILDSYS="metacity-theme"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.tt?' -print -quit)" ] ; then
-            _TOOLCHAIN="fonts"
+            _BUILDSYS="fonts"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.jar' -print -quit)" ] ; then
-            _TOOLCHAIN="jar"
+            _BUILDSYS="jar"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.lpi' -print -quit)" ] ; then
-            _TOOLCHAIN="lazarus"
+            _BUILDSYS="lazarus"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.csproj' -print -quit)" ] ; then
-            _TOOLCHAIN="dotnet-csproj"
+            _BUILDSYS="dotnet-csproj"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.sln' -print -quit)" ] ; then
-            _TOOLCHAIN="dotnet-sln"
+            _BUILDSYS="dotnet-sln"
         elif [ -f build.zig ] ; then
-            _TOOLCHAIN="zig"
+            _BUILDSYS="zig"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)" ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)"
-            _TOOLCHAIN="script"
+            _BUILDSYS="script"
         elif [ -f build.sh -o -f make.sh -o -f install.sh ] ; then
-            _TOOLCHAIN="shell"
+            _BUILDSYS="shell"
         elif [ -d usr/bin -o -d usr/share ] ; then
-            _TOOLCHAIN="filesystem"
+            _BUILDSYS="filesystem"
         fi
     }
-    _check_toolchain
-    if [ -z "${_TOOLCHAIN}" ] ; then
+    _check_buildsys
+    if [ -z "${_BUILDSYS}" ] ; then
         for d in "${_NAME}"/ [Ss]rc*/ [Ss]ource*/ [Ll]inux*/ */ ; do
             if [ -d "$d" ] ; then
                 cd "$d"
-                _check_toolchain
+                _check_buildsys
                 cd ..
-                if [ -n "${_TOOLCHAIN}" ] ; then
+                if [ -n "${_BUILDSYS}" ] ; then
                     _SUBDIR="${d%/}"
                     break
                 fi
@@ -362,101 +362,97 @@ function _enter_directory {
 }
 
 function _set_scripts {
-    if [ "${_TOOLCHAIN}" = bootstrap ] ; then
+    if [ "${_BUILDSYS}" = bootstrap ] ; then
         _BUILDREQUIRES+=" automake"
         "${_COMPAT}" && _BUILDCONF="chmod +x bootstrap\n./bootstrap||:\n./configure||:" || _BUILDCONF="./bootstrap\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = bootstrap.sh ] ; then
+    elif [ "${_BUILDSYS}" = bootstrap.sh ] ; then
         _BUILDREQUIRES+=" automake"
         "${_COMPAT}" && _BUILDCONF="chmod +x bootstrap.sh\n./bootstrap.sh||:\n./configure||:" || _BUILDCONF="./bootstrap.sh\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = autogen.sh ] ; then
+    elif [ "${_BUILDSYS}" = autogen.sh ] ; then
         _BUILDREQUIRES+=" automake"
         "${_COMPAT}" && _BUILDCONF="chmod +x autogen.sh\n./autogen.sh||:\n./configure||:" || _BUILDCONF="./autogen.sh\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = autoreconf ] ; then
+    elif [ "${_BUILDSYS}" = autoreconf ] ; then
         _BUILDREQUIRES+=" automake"
         "${_COMPAT}" && _BUILDCONF="autoreconf -ifv||:\n./configure||:" || _BUILDCONF="autoreconf -ifv\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = configure ] ; then
+    elif [ "${_BUILDSYS}" = configure ] ; then
         _BUILDREQUIRES+=" automake"
         "${_COMPAT}" && _BUILDCONF="chmod +x configure\n./configure||:" || _BUILDCONF="%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = cmake ] ; then
+    elif [ "${_BUILDSYS}" = cmake ] ; then
         _BUILDREQUIRES+=" cmake"
         "${_COMPAT}" && _BUILDCONF="mkdir -p build;cd build;cmake ..||:" || _BUILDCONF="%{cmake}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{cmake_build}"
         _INSTALL="#cd build;#{make_install}\n%{cmake_install}"
-    elif [ "${_TOOLCHAIN}" = qmake6 ] ; then
+    elif [ "${_BUILDSYS}" = qmake6 ] ; then
         _BUILDREQUIRES+=" qt6-qtbase-devel"
         "${_COMPAT}" && _BUILDCONF="qmake6 -recursive||:" || _BUILDCONF="%{qmake_qt6}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = qmake5 ] ; then
+    elif [ "${_BUILDSYS}" = qmake5 ] ; then
         _BUILDREQUIRES+=" qt5-qtbase-devel"
         "${_COMPAT}" && _BUILDCONF="qmake-qt5 -recursive||:" || _BUILDCONF="%{qmake_qt5}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = qmake4 ] ; then
+    elif [ "${_BUILDSYS}" = qmake4 ] ; then
         _BUILDREQUIRES+=" qt4-devel"
         "${_COMPAT}" && _BUILDCONF="qmake-qt4 -recursive||:" || _BUILDCONF="%{qmake_qt4}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = imake ] ; then
+    elif [ "${_BUILDSYS}" = imake ] ; then
         _BUILDREQUIRES+=" imake"
         _BUILDCONF="xmkmf -a"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = config.sh ] ; then
+    elif [ "${_BUILDSYS}" = config.sh ] ; then
         "${_COMPAT}" && _BUILDCONF="chmod +x config.sh\n./config.sh||:" || _BUILDCONF="bash config.sh"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = make ] ; then
+    elif [ "${_BUILDSYS}" = make ] ; then
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = makefile ] ; then
+    elif [ "${_BUILDSYS}" = makefile ] ; then
         "${_COMPAT}" && _BUILDMAKE="make -f ${_BUILDFILE#./}" || _BUILDMAKE="%{make_build} -f ${_BUILDFILE#./}"
         _INSTALL="%{make_install} -f ${_BUILDFILE#./}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = python2 ] ; then
-        _BUILDREQUIRES+=" python2-devel"
-        _BUILDMAKE="%{py2_build}"
-        _INSTALL="%{py2_install}"
-    elif [ "${_TOOLCHAIN}" = python3 ] ; then
+    elif [ "${_BUILDSYS}" = python3 ] ; then
         _BUILDREQUIRES+=" python3-devel"
         _BUILDMAKE="%{py3_build}"
         _INSTALL="%{py3_install}"
-    elif [ "${_TOOLCHAIN}" = python-build ] ; then
+    elif [ "${_BUILDSYS}" = python-build ] ; then
         _BUILDREQUIRES+=" python3-build"
         _BUILDMAKE="python3 -m build"
         _INSTALL="pip install ."
-    elif [ "${_TOOLCHAIN}" = cargo ] ; then
+    elif [ "${_BUILDSYS}" = cargo ] ; then
         _BUILDREQUIRES+=" cargo"
         "${_COMPAT}" && _BUILDCONF="cargo clean\ncargo update" || _BUILDCONF="cargo update"
         "${_COMPAT}" && _BUILDMAKE="cargo build -j 1" || _BUILDMAKE="cargo build --release"
         _INSTALL="cargo install --root=%{buildroot}%{_prefix} --path=.||install -Dm755 target/release/%{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = golang ] ; then
+    elif [ "${_BUILDSYS}" = golang ] ; then
         _BUILDREQUIRES+=" golang"
         _BUILDMAKE="go build"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = meson ] ; then
+    elif [ "${_BUILDSYS}" = meson ] ; then
         _BUILDREQUIRES+=" meson"
         "${_COMPAT}" && _BUILDCONF="meson build" || _BUILDCONF="%{meson}"
         "${_COMPAT}" && _BUILDMAKE="ninja -C build" || _BUILDMAKE="%{meson_build}"
         "${_COMPAT}" && _INSTALL="ninja -C build install" || _INSTALL="%{meson_install}"
-    elif [ "${_TOOLCHAIN}" = ninja ] ; then
+    elif [ "${_BUILDSYS}" = ninja ] ; then
         _BUILDREQUIRES+=" ninja-build"
         "${_COMPAT}" && _BUILDMAKE="ninja" || _BUILDMAKE="%{ninja_build}"
         _INSTALL="%{ninja_install}"
-    elif [ "${_TOOLCHAIN}" = scons ] ; then
+    elif [ "${_BUILDSYS}" = scons ] ; then
         _BUILDREQUIRES+=" python3-scons"
         _BUILDMAKE="scons build"
         _INSTALL="scons --install-sandbox=%{buildroot} install"
-    elif [ "${_TOOLCHAIN}" = waf ] ; then
+    elif [ "${_BUILDSYS}" = waf ] ; then
         if [ -x waf ] ; then
             _BUILDCONF="./waf configure --prefix=%{buildroot}/usr"
             _BUILDMAKE="./waf build"
@@ -467,106 +463,106 @@ function _set_scripts {
             _BUILDMAKE="waf build"
             _INSTALL="waf install"
         fi
-    elif [ "${_TOOLCHAIN}" = gem ] ; then
+    elif [ "${_BUILDSYS}" = gem ] ; then
         _BUILDREQUIRES+=" rubygems-devel"
         _BUILDMAKE="%global gem_name %{name}\ngem build *.gemspec\n%{gem_install}"
         _INSTALL="mkdir -p %{buildroot}%{gem_dir}\ncp -a .%{gem_dir}/* %{buildroot}%{gem_dir}"
-    elif [ "${_TOOLCHAIN}" = rake ] ; then
+    elif [ "${_BUILDSYS}" = rake ] ; then
         _BUILDREQUIRES+=" rubygem-rake"
         _BUILDMAKE="rake"
         _INSTALL="rake install DESTDIR=%{buildroot}"
-    elif [ "${_TOOLCHAIN}" = ant ] ; then
+    elif [ "${_BUILDSYS}" = ant ] ; then
         _BUILDREQUIRES+=" java-devel-openjdk ant"
         _NOARCH=true
         _BUILDMAKE="export JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8\nant"
         _INSTALL="install -d %{buildroot}%{_datadir}/%{name}\ncp -a dist/* %{buildroot}%{_datadir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = maven ] ; then
+    elif [ "${_BUILDSYS}" = maven ] ; then
         _BUILDREQUIRES+=" java-devel-openjdk maven"
         _NOARCH=true
         _BUILDMAKE="export JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8\nmvn -e package"
         _INSTALL="install -d %{buildroot}%{_datadir}/%{name}\ninstall -m644 %{name}.jar %{buildroot}%{_datadir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = dune ] ; then
+    elif [ "${_BUILDSYS}" = dune ] ; then
         _BUILDREQUIRES+=" ocaml-dune"
         _BUILDMAKE="dune build"
         _INSTALL="dune install --destdir=%{buildroot}"
-    elif [ "${_TOOLCHAIN}" = cabal ] ; then
+    elif [ "${_BUILDSYS}" = cabal ] ; then
         _BUILDREQUIRES+=" ghc cabal-install"
         _BUILDCONF="cabal update\ncabal install --only-dependencies"
         _BUILDMAKE="cabal build"
         _INSTALL="cabal install"
-    elif [ "${_TOOLCHAIN}" = stack ] ; then
+    elif [ "${_BUILDSYS}" = stack ] ; then
         _BUILDREQUIRES+=" ghc stack"
         _BUILDMAKE="stack build"
         _INSTALL="stack install"
-    elif [ "${_TOOLCHAIN}" = ghc ] ; then
+    elif [ "${_BUILDSYS}" = ghc ] ; then
         _BUILDREQUIRES+=" ghc"
         _BUILDCONF="runhaskell Setup.hs configure"
         _BUILDMAKE="runhaskell Setup.hs build"
         _INSTALL="runhaskell Setup.hs install"
-    elif [ "${_TOOLCHAIN}" = perl ] ; then
+    elif [ "${_BUILDSYS}" = perl ] ; then
         _BUILDREQUIRES+=" perl-devel"
         _NOARCH=true
         _BUILDMAKE="perl Makefile.PL INSTALLDIRS=vendor\n#%{make_build}\nmake -j1"
         _INSTALL="%{make_install}"
-    elif [ "${_TOOLCHAIN}" = cc ] ; then
+    elif [ "${_BUILDSYS}" = cc ] ; then
         _BUILDMAKE="make %{name}"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = nodejs ] ; then
+    elif [ "${_BUILDSYS}" = nodejs ] ; then
         _BUILDREQUIRES+=" nodejs-devel"
         _NOARCH=true
-        _BUILDMAKE="#Disable build"
+        _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="mkdir -p %{buildroot}%{nodejs_sitelib}/%{name} %{buildroot}%{_bindir}\ncp -a * %{buildroot}%{nodejs_sitelib}/%{name}"
         _INSTALL+="\nln -s %{nodejs_sitelib}/%{name}/${_BUILDFILE#./} %{buildroot}%{_bindir}/%{name}\nrm -f %{buildroot}%{nodejs_sitelib}/%{name}/{*.md,LICENSE}"
-    elif [ "${_TOOLCHAIN}" = icon-theme ] ; then
+    elif [ "${_BUILDSYS}" = icon-theme ] ; then
         _NOARCH=true
-        _BUILDMAKE="#Disable build"
+        _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -d %{buildroot}%{_datadir}/icons/${_SUBDIR:-$_NAME}\ncp -a * %{buildroot}%{_datadir}/icons/${_SUBDIR:-$_NAME}"
-    elif [ "${_TOOLCHAIN}" = desktop-theme ] ; then
+    elif [ "${_BUILDSYS}" = desktop-theme ] ; then
         _NOARCH=true
-        _BUILDMAKE="#Disable build"
+        _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -d %{buildroot}%{_datadir}/themes/${_SUBDIR:-$_NAME}\ncp -a * %{buildroot}%{_datadir}/themes/${_SUBDIR:-$_NAME}"
-    elif [ "${_TOOLCHAIN}" = metacity-theme ] ; then
+    elif [ "${_BUILDSYS}" = metacity-theme ] ; then
         _NOARCH=true
-        _BUILDMAKE="#Disable build"
+        _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         if [ -n "${_SUBDIR}" ] ; then
             _INSTALL="install -d %{buildroot}%{_datadir}/themes/${_NAME}\ncp -a * %{buildroot}%{_datadir}/themes/${_NAME}"
         else
             _INSTALL="install -d %{buildroot}%{_datadir}/themes/${_NAME}/metacity-1\ncp -a * %{buildroot}%{_datadir}/themes/${_NAME}/metacity-1"
         fi
-    elif [ "${_TOOLCHAIN}" = fonts ] ; then
+    elif [ "${_BUILDSYS}" = fonts ] ; then
         _NOARCH=true
-        _BUILDMAKE="#Disable build"
+        _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -d %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}\ncp *.tt? %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}"
-    elif [ "${_TOOLCHAIN}" = jar ] ; then
+    elif [ "${_BUILDSYS}" = jar ] ; then
         _RELEASE+=".bin"
         _NOARCH=true
-        _BUILDMAKE="#Disable build"
+        _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -d %{buildroot}%{_datadir}/${_SUBDIR:-$_NAME}\ncp *.jar %{buildroot}%{_datadir}/${_SUBDIR:-$_NAME}"
-    elif [ "${_TOOLCHAIN}" = lazarus ] ; then
+    elif [ "${_BUILDSYS}" = lazarus ] ; then
         _BUILDREQUIRES+=" lazarus"
         _BUILDMAKE="lazbuild --lazarusdir=%{_libdir}/lazarus --cpu=${HOSTTYPE} --widgetset=gtk2 -B *.lpi"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = dotnet-csproj ] ; then
+    elif [ "${_BUILDSYS}" = dotnet-csproj ] ; then
         _BUILDREQUIRES+=" dotnet-host"
         _BUILDMAKE="dotnet publish *.csproj -c Release --no-self-contained"
         _INSTALL="install -Dm755 bin/Release/*/linux-x64/publish/%{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = dotnet-sln ] ; then
+    elif [ "${_BUILDSYS}" = dotnet-sln ] ; then
         _BUILDREQUIRES+=" dotnet-host"
         _BUILDMAKE="dotnet build *.sln -c Release"
         _INSTALL="install -Dm755 Bld/Drops/Release/Binaries/net8.0/%{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = zig ] ; then
+    elif [ "${_BUILDSYS}" = zig ] ; then
         _BUILDREQUIRES+=" zig"
         _BUILDMAKE="zig build -Doptimize=ReleaseFast"
         _INSTALL="install -Dm755 zig-out/bin/%{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_TOOLCHAIN}" = script ] ; then
+    elif [ "${_BUILDSYS}" = script ] ; then
         _NOARCH=true
-        _BUILDMAKE="#Disable build"
+        _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -Dm755 ${_BUILDFILE#./} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE#./}"
-    elif [ "${_TOOLCHAIN}" = shell ] ; then
+    elif [ "${_BUILDSYS}" = shell ] ; then
         _BUILDMAKE="if [ -f build.sh ];then\nbash build.sh\nelif [ -f make.sh ];then\nbash make.sh\nfi"
         _INSTALL="if [ -f install.sh ];then\nsed -i 's|/usr|%{buildroot}/usr|' install.sh\nbash install.sh\nelse\ninstall -Dm755 %{name} %{buildroot}%{_bindir}/%{name}\nfi"
-    elif [ "${_TOOLCHAIN}" = filesystem ] ; then
-        _BUILDMAKE="#Disable build"
+    elif [ "${_BUILDSYS}" = filesystem ] ; then
+        _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -d %{buildroot}\ncp -a * %{buildroot}"
         if find . -type f -exec file '{}' \; | grep -qsim1 ELF ; then
             _RELEASE+=".bin"
@@ -633,9 +629,9 @@ function _output_data {
     if "${_COMPAT}" ; then
         echo "export CFLAGS=\${CFLAGS/-Werror=format-security/} CFLAGS+=' ${_CFLAGS}' LDFLAGS+=' -Wl,--allow-multiple-definition'"
         "${_WITHCXX}" && echo "export CXXFLAGS=\${CXXFLAGS/-Werror=format-security/} CXXFLAGS+=' ${_CXXFLAGS}' CPPFLAGS+=' ${_CXXFLAGS}'"
-        [ "${_TOOLCHAIN}" = configure ] && echo "cp -f /usr/lib/rpm/redhat/config.* `dirname ./${_BUILDFILE}`"
+        [ "${_BUILDSYS}" = configure ] && echo "cp -f /usr/lib/rpm/redhat/config.* `dirname ./${_BUILDFILE}`"
         "${_WITHCXX}" && _CFLAGS+=" ${_CXXFLAGS}"
-        [ "${_TOOLCHAIN}" = cmake ] && echo -e "rm -f CMakeCache.txt\nsed -i 's|-Wall|${_CFLAGS}|' \`find . -type f -name CMakeLists.txt\`"
+        [ "${_BUILDSYS}" = cmake ] && echo -e "rm -f CMakeCache.txt\nsed -i 's|-Wall|${_CFLAGS}|' \`find . -type f -name CMakeLists.txt\`"
         [ "${_BUILDCONF/\/configure/}" != "${_BUILDCONF}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`"
         [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
         [ "${_BUILDMAKE/make/}" != "${_BUILDMAKE}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`"
@@ -647,8 +643,8 @@ function _output_data {
     echo '%install'
     [ -n "${_SUBDIR}" ] && echo 'cd' "${_SUBDIR}"
     if "${_COMPAT}" ; then
-        echo '#Install disabled'
-        echo '#Install disabled.' >&2
+        echo "#Disable install for buildsys: ${_BUILDSYS}"
+        echo "#Disable install for buildsys: ${_BUILDSYS}" >&2
         echo -e '%if 0\n'"${_INSTALL}"'\n%endif'
     else
         echo "install -d %{buildroot}%{_bindir} %{buildroot}/usr/local/bin %{buildroot}%{_datadir} %{buildroot}/usr/local/share"
@@ -673,8 +669,6 @@ function _output_data {
     echo '%{_datadir}/pixmaps/%{name}.*'
     echo '%{_sysconfdir}/%{name}.*'
     echo '%{_sysconfdir}/profile.d/%{name}.*sh'
-    echo '%{python2_sitearch}/*'
-    echo '%{python2_sitelib}/*'
     echo '%{python3_sitearch}/*'
     echo '%{python3_sitelib}/*'
     echo '%{perl_vendorarch}/*'
