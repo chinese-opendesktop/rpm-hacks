@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2024.11.08"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.01.02"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -40,7 +40,7 @@ function _initial_variables {
     _TEMPDIR="$(mktemp -d)"
     _SUMMARY="No summary"
     _VERSION="0"
-    _RELEASE="1"
+    "${_COMPAT}" && _RELEASE="0" || _RELEASE="1"
     _LICENSE="Free Software"
     _GROUP="Applications"
     _SOURCE=$(basename "${_FILE}")
@@ -327,7 +327,9 @@ function _enter_directory {
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.jar' -print -quit)" ] ; then
             _BUILDSYS="jar"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.lpi' -print -quit)" ] ; then
-            _BUILDSYS="lazarus"
+            _BUILDSYS="lazarus-bin"
+        elif [ -f "$(find . -maxdepth 1 -type f -name '*.lpk' -print -quit)" ] ; then
+            _BUILDSYS="lazarus-lib"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.csproj' -print -quit)" ] ; then
             _BUILDSYS="dotnet-csproj"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.sln' -print -quit)" ] ; then
@@ -432,12 +434,12 @@ function _set_scripts {
         _INSTALL="pip install ."
     elif [ "${_BUILDSYS}" = cargo ] ; then
         _BUILDREQUIRES+=" cargo"
-        "${_COMPAT}" && _BUILDCONF="cargo clean\ncargo update" || _BUILDCONF="cargo update"
+        "${_COMPAT}" && _BUILDCONF="cargo update" || _BUILDCONF="cargo clean"
         "${_COMPAT}" && _BUILDMAKE="cargo build -j 1" || _BUILDMAKE="cargo build --release"
         _INSTALL="cargo install --root=%{buildroot}%{_prefix} --path=.||install -Dm755 target/release/%{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = golang ] ; then
         _BUILDREQUIRES+=" golang"
-        _BUILDMAKE="go build"
+        _BUILDMAKE="go build -x"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = meson ] ; then
         _BUILDREQUIRES+=" meson"
@@ -538,10 +540,14 @@ function _set_scripts {
         _NOARCH=true
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -d %{buildroot}%{_datadir}/${_SUBDIR:-$_NAME}\ncp *.jar %{buildroot}%{_datadir}/${_SUBDIR:-$_NAME}"
-    elif [ "${_BUILDSYS}" = lazarus ] ; then
+    elif [ "${_BUILDSYS}" = lazarus-bin ] ; then
         _BUILDREQUIRES+=" lazarus"
         _BUILDMAKE="lazbuild --lazarusdir=%{_libdir}/lazarus --cpu=${HOSTTYPE} --widgetset=gtk2 -B *.lpi"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_BUILDSYS}" = lazarus-lib ] ; then
+        _BUILDREQUIRES+=" lazarus"
+        _BUILDMAKE="lazbuild --lazarusdir=%{_libdir}/lazarus --cpu=${HOSTTYPE} --widgetset=gtk2 -B *.lpk"
+        _INSTALL="install -d %{buildroot}%{_libdir}/fpc/%{name}\ncp -a * %{buildroot}%{_libdir}/fpc/%{name}"
     elif [ "${_BUILDSYS}" = dotnet-csproj ] ; then
         _BUILDREQUIRES+=" dotnet-host"
         _BUILDMAKE="dotnet publish *.csproj -c Release --no-self-contained"
