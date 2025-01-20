@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.01.02"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.01.16"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -218,11 +218,13 @@ function _enter_directory {
     fi
     _FINDFILE=$(find . -type f -name '*.spec' -print -quit)
     [ -n "${_FINDFILE}" ] && _COMMENT="See ${_FINDFILE} in Source."
-    find . -type f -iregex '.*\.\(c\|cc\|cpp\|c\+\+\|cxx\|cs\|go\|hs\|pas\|swift\|adb\|f\|f77\|f90\|f95\|rs\|vala\|ml\)' -quit
-    if [ $? -ne 0 ] ; then
+    _FINDFILE=$(find . -type f -iregex '.*\.\(c\|cc\|cpp\|c\+\+\|cxx\|cs\|go\|hs\|pas\|swift\|adb\|f\|f77\|f90\|f95\|rs\|vala\|ml\)' -print -quit)
+    if [ -n "${_FINDFILE}" ] ; then
+        _NOARCH=false
+        _FINDFILE=$(find . -type f -iregex '.*\.\(cc\|cpp\|c\+\+\|cxx\)' -print -quit)
+        [ -n "${_FINDFILE}" ] && _WITHCXX=true
+    else
         _NOARCH=true
-    elif find . -type f -iregex '.*\.\(cc\|cpp\|c\+\+\|cxx\)' -quit ; then
-        _WITHCXX=true
     fi
     for f in COPYING* LICENSE* AUTHORS* NEWS* CHANGELOG* ChangeLog* README* TODO* THANKS* TRANSLATION* *.pdf *.rst *.md *.txt ; do
         if [ -f "$f" -a "$f" != CMakeLists.txt -a "$f" != meson_options.txt -a "${_DOCS/ $f/}" = "${_DOCS}" ] ; then
@@ -338,6 +340,9 @@ function _enter_directory {
             _BUILDSYS="zig"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)" ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)"
+            _BUILDSYS="script"
+        elif [ -f "${_NAME}" ] && file "${_NAME}"|grep -qs text ; then
+            _BUILDFILE="${_NAME}"
             _BUILDSYS="script"
         elif [ -f build.sh -o -f make.sh -o -f install.sh ] ; then
             _BUILDSYS="shell"
@@ -561,7 +566,6 @@ function _set_scripts {
         _BUILDMAKE="zig build -Doptimize=ReleaseFast"
         _INSTALL="install -Dm755 zig-out/bin/%{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = script ] ; then
-        _NOARCH=true
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -Dm755 ${_BUILDFILE#./} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE#./}"
     elif [ "${_BUILDSYS}" = shell ] ; then
@@ -570,7 +574,7 @@ function _set_scripts {
     elif [ "${_BUILDSYS}" = filesystem ] ; then
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -d %{buildroot}\ncp -a * %{buildroot}"
-        if find . -type f -exec file '{}' \; | grep -qsim1 ELF ; then
+        if find "${_TEMPDIR}" -type f -exec file '{}' \; | grep -qsm1 ELF ; then
             _RELEASE+=".bin"
             _NOARCH=false
         else
