@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.01.16"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.02.14"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -50,10 +50,11 @@ function _initial_variables {
     _WITHCXX=false
     _DESCRIPTION="No description."
     _SETUP="-q"
+    _BUILDFILE=""
     _BUILDSYS=""
     _SUBDIR=""
-    _CFLAGS="-Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
-    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
+    _CFLAGS="-DLINUX -Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
+    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
     _BUILDCONF=""
     _BUILDMAKE="false"
     _INSTALL="false"
@@ -255,6 +256,8 @@ function _enter_directory {
             _BUILDSYS="bootstrap"
         elif [ -f bootstrap.sh ] ; then
             _BUILDSYS="bootstrap.sh"
+        elif [ -f CMakeLists.txt ] ; then
+            _BUILDSYS="cmake"
         elif [ -f autogen.sh ] ; then
             _BUILDSYS="autogen.sh"
         elif [ -f configure.ac -o -f configure.in ] ; then
@@ -262,8 +265,6 @@ function _enter_directory {
         elif [ -f configure ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -name 'config.guess' -print -quit)"
             _BUILDSYS="configure"
-        elif [ -f CMakeLists.txt ] ; then
-            _BUILDSYS="cmake"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.pro' -print -quit)" ] ; then
             _BUILDSYS="qmake5"
             grep -qsi qt4 * && _BUILDSYS="qmake4"
@@ -320,6 +321,9 @@ function _enter_directory {
         elif [ -f package.json ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|index\).*\.js' -print -quit)"
             _BUILDSYS="nodejs"
+        elif [ -f deno.json ] ; then
+            _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|executable\).*\.ts' -print -quit)"
+            _BUILDSYS="deno"
         elif [ -f index.theme ] ; then
             [ -d 16x16 ] && _BUILDSYS="icon-theme" || _BUILDSYS="desktop-theme"
         elif [ -f metacity-theme-1.xml ] ; then
@@ -364,8 +368,8 @@ function _enter_directory {
             fi
         done
     fi
+    _BUILDFILE=${_BUILDFILE#./}
     popd > /dev/null
-    rm -rf "${_TEMPDIR}"
 }
 
 function _set_scripts {
@@ -386,7 +390,7 @@ function _set_scripts {
         _INSTALL="%{make_install}"
     elif [ "${_BUILDSYS}" = autoreconf ] ; then
         _BUILDREQUIRES+=" automake"
-        "${_COMPAT}" && _BUILDCONF="autoreconf -ifv||:\n./configure||:" || _BUILDCONF="autoreconf -ifv\n%{configure}"
+        "${_COMPAT}" && _BUILDCONF="autoreconf -ifv||autoconf||:\n./configure||:" || _BUILDCONF="autoreconf -ifv\n%{configure}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_BUILDSYS}" = configure ] ; then
@@ -427,8 +431,8 @@ function _set_scripts {
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = makefile ] ; then
-        "${_COMPAT}" && _BUILDMAKE="make -f ${_BUILDFILE#./}" || _BUILDMAKE="%{make_build} -f ${_BUILDFILE#./}"
-        _INSTALL="%{make_install} -f ${_BUILDFILE#./}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
+        "${_COMPAT}" && _BUILDMAKE="make -f ${_BUILDFILE}" || _BUILDMAKE="%{make_build} -f ${_BUILDFILE}"
+        _INSTALL="%{make_install} -f ${_BUILDFILE}||install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = python3 ] ; then
         _BUILDREQUIRES+=" python3-devel"
         _BUILDMAKE="%{py3_build}"
@@ -460,7 +464,7 @@ function _set_scripts {
         _BUILDMAKE="scons build"
         _INSTALL="scons --install-sandbox=%{buildroot} install"
     elif [ "${_BUILDSYS}" = waf ] ; then
-        if [ -x waf ] ; then
+        if [ -x "${_TEMPDIR}"/waf ] ; then
             _BUILDCONF="./waf configure --prefix=%{buildroot}/usr"
             _BUILDMAKE="./waf build"
             _INSTALL="./waf install"
@@ -519,7 +523,11 @@ function _set_scripts {
         _NOARCH=true
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="mkdir -p %{buildroot}%{nodejs_sitelib}/%{name} %{buildroot}%{_bindir}\ncp -a * %{buildroot}%{nodejs_sitelib}/%{name}"
-        _INSTALL+="\nln -s %{nodejs_sitelib}/%{name}/${_BUILDFILE#./} %{buildroot}%{_bindir}/%{name}\nrm -f %{buildroot}%{nodejs_sitelib}/%{name}/{*.md,LICENSE}"
+        _INSTALL+="\nln -s %{nodejs_sitelib}/%{name}/${_BUILDFILE} %{buildroot}%{_bindir}/%{name}\nrm -f %{buildroot}%{nodejs_sitelib}/%{name}/{*.md,LICENSE}"
+    elif [ "${_BUILDSYS}" = deno ] ; then
+        _BUILDREQUIRES+=" deno"
+        _BUILDMAKE="deno compile --output ${_NAME} --allow-read ${_BUILDFILE}"
+        _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = icon-theme ] ; then
         _NOARCH=true
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
@@ -567,7 +575,7 @@ function _set_scripts {
         _INSTALL="install -Dm755 zig-out/bin/%{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = script ] ; then
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
-        _INSTALL="install -Dm755 ${_BUILDFILE#./} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE#./}"
+        _INSTALL="install -Dm755 ${_BUILDFILE} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE}"
     elif [ "${_BUILDSYS}" = shell ] ; then
         _BUILDMAKE="if [ -f build.sh ];then\nbash build.sh\nelif [ -f make.sh ];then\nbash make.sh\nfi"
         _INSTALL="if [ -f install.sh ];then\nsed -i 's|/usr|%{buildroot}/usr|' install.sh\nbash install.sh\nelse\ninstall -Dm755 %{name} %{buildroot}%{_bindir}/%{name}\nfi"
@@ -581,6 +589,7 @@ function _set_scripts {
             _NOARCH=true
         fi
     fi
+    rm -rf "${_TEMPDIR}"
 }
 
 function _output_data {
@@ -689,6 +698,7 @@ function _output_data {
     echo '%exclude %{gem_cache}'
     echo '%exclude %{_datadir}/icons/*/icon-theme.cache'
     echo '%exclude %{_infodir}/dir'
+    echo '%exclude %{_datadir}/perl5/perllocal.pod'
     if ! "${_NOARCH}" ; then
         echo
         echo '%files devel'
