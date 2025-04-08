@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.02.14"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.03.25"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -91,9 +91,11 @@ function _unpack_archive {
         _BUILDREQUIRES=" p7zip"
     elif [ "${_FILEEXT}" = jar ] ; then
         cp "${_FILE}" "${_TEMPDIR}"
-        _SETUP+=" -T"
         _BASENAME=${_SOURCE%.jar}
         _URLSITE="sourceforge"
+        _SETUP+=" -T"
+        [ -n "${_BUILDSET}" ] && _BUILDSET+="\n"
+        _BUILDSET+='cp %{SOURCE0} .'
     else
         echo "ERROR! Unrecognized archive: ${_FILE}" >&2
         exit 1
@@ -314,6 +316,8 @@ function _enter_directory {
             _BUILDSYS="stack"
         elif [ -f Setup.hs ] ; then
             _BUILDSYS="ghc"
+        elif [ -f "$(find . -maxdepth 1 -type f -name '*.nimble' -print -quit)" ] ; then
+            _BUILDSYS="nimble"
         elif [ -f Makefile.PL ] ; then
             _BUILDSYS="perl"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(c\|cc\|cpp\|c\+\+\|cxx\)' -print -quit)" ] ; then
@@ -444,7 +448,7 @@ function _set_scripts {
     elif [ "${_BUILDSYS}" = cargo ] ; then
         _BUILDREQUIRES+=" cargo"
         "${_COMPAT}" && _BUILDCONF="cargo update" || _BUILDCONF="cargo clean"
-        "${_COMPAT}" && _BUILDMAKE="cargo build -j 1" || _BUILDMAKE="cargo build --release"
+        "${_COMPAT}" && _BUILDMAKE="cargo build -j 1" || _BUILDMAKE="cargo build -j 1 --release"
         _INSTALL="cargo install --root=%{buildroot}%{_prefix} --path=.||install -Dm755 target/release/%{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = golang ] ; then
         _BUILDREQUIRES+=" golang"
@@ -510,6 +514,11 @@ function _set_scripts {
         _BUILDCONF="runhaskell Setup.hs configure"
         _BUILDMAKE="runhaskell Setup.hs build"
         _INSTALL="runhaskell Setup.hs install"
+    elif [ "${_BUILDSYS}" = nimble ] ; then
+        _BUILDREQUIRES+=" nim"
+        _BUILDCONF="nimble setup"
+        _BUILDMAKE="nimble build"
+        _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = perl ] ; then
         _BUILDREQUIRES+=" perl-devel"
         _NOARCH=true
@@ -582,7 +591,7 @@ function _set_scripts {
     elif [ "${_BUILDSYS}" = filesystem ] ; then
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -d %{buildroot}\ncp -a * %{buildroot}"
-        if find "${_TEMPDIR}" -type f -exec file '{}' \; | grep -qsm1 ELF ; then
+        if file `find "${_TEMPDIR}" -type f` | grep -qsm1 ELF ; then
             _RELEASE+=".bin"
             _NOARCH=false
         else
@@ -708,6 +717,7 @@ function _output_data {
         echo '%{_libdir}/pkgconfig/*.pc'
         echo '%{_includedir}/*.h'
         echo '%{_includedir}/%{name}'
+        echo '%exclude %{_libdir}/*.la'
     fi
     echo '%endif'
     echo
