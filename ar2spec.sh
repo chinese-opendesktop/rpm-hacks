@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.03.25"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.05.09"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -53,8 +53,8 @@ function _initial_variables {
     _BUILDFILE=""
     _BUILDSYS=""
     _SUBDIR=""
-    _CFLAGS="-DLINUX -Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
-    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
+    _CFLAGS="-DLINUX -Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
+    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
     _BUILDCONF=""
     _BUILDMAKE="false"
     _INSTALL="false"
@@ -134,7 +134,8 @@ function _set_attributes {
         fi
     fi
     _PKGNAME="$(echo ${_PKGNAME}|sed -e 's|^[0-9]*-||' -e 's|~[0-9a-z]*_||')"
-    [ -z "${_NAME}" ] && _NAME="${_PKGNAME,,}" _NAME="${_NAME/./-}"
+    [ "${_PKGNAME#lib}" = "${_PKGNAME}" ] && _PKGNAME="${_PKGNAME,,}"
+    [ -z "${_NAME}" ] && _NAME="${_PKGNAME/./-}"
     _SRCNAME=${_SOURCE}
     _SRCNAME=${_SRCNAME/${_NAME}/%\{name\}}
     _SRCNAME=${_SRCNAME/${_VERSION}/%\{version\}}
@@ -409,6 +410,7 @@ function _set_scripts {
         _INSTALL="#cd build;#{make_install}\n%{cmake_install}"
     elif [ "${_BUILDSYS}" = qmake6 ] ; then
         _BUILDREQUIRES+=" qt6-qtbase-devel"
+        _CXXFLAGS=${_CXXFLAGS//qt5/qt6}
         "${_COMPAT}" && _BUILDCONF="qmake6 -recursive||:" || _BUILDCONF="%{qmake_qt6}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
@@ -419,6 +421,7 @@ function _set_scripts {
         _INSTALL="%{make_install}"
     elif [ "${_BUILDSYS}" = qmake4 ] ; then
         _BUILDREQUIRES+=" qt4-devel"
+        _CXXFLAGS=${_CXXFLAGS/ -I\/usr\/include\/qt5 -I\/usr\/include\/qt5\/QtWidgets/}
         "${_COMPAT}" && _BUILDCONF="qmake-qt4 -recursive||:" || _BUILDCONF="%{qmake_qt4}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
@@ -525,7 +528,7 @@ function _set_scripts {
         _BUILDMAKE="perl Makefile.PL INSTALLDIRS=vendor\n#%{make_build}\nmake -j1"
         _INSTALL="%{make_install}"
     elif [ "${_BUILDSYS}" = cc ] ; then
-        _BUILDMAKE="make %{name}"
+        "${_COMPAT}" && _BUILDMAKE="make %{name}" || _BUILDMAKE="g++ *.c* -o %{name}"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = nodejs ] ; then
         _BUILDREQUIRES+=" nodejs-devel"
@@ -715,6 +718,7 @@ function _output_data {
         echo '%{_libdir}/*.a'
         echo '%{_libdir}/%{name}'
         echo '%{_libdir}/pkgconfig/*.pc'
+        echo '%{_libdir}/cmake/%{name}'
         echo '%{_includedir}/*.h'
         echo '%{_includedir}/%{name}'
         echo '%exclude %{_libdir}/*.la'
