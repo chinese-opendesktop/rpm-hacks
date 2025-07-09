@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.05.09"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.07.09"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -329,6 +329,8 @@ function _enter_directory {
         elif [ -f deno.json ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|executable\).*\.ts' -print -quit)"
             _BUILDSYS="deno"
+        elif [ -f dub.json ] ; then
+            _BUILDSYS="dub"
         elif [ -f index.theme ] ; then
             [ -d 16x16 ] && _BUILDSYS="icon-theme" || _BUILDSYS="desktop-theme"
         elif [ -f metacity-theme-1.xml ] ; then
@@ -363,9 +365,9 @@ function _enter_directory {
     if [ -z "${_BUILDSYS}" ] ; then
         for d in "${_NAME}"/ [Ss]rc*/ [Ss]ource*/ [Ll]inux*/ */ ; do
             if [ -d "$d" ] ; then
-                cd "$d"
+                pushd "$d" > /dev/null
                 _check_buildsys
-                cd ..
+                popd > /dev/null
                 if [ -n "${_BUILDSYS}" ] ; then
                     _SUBDIR="${d%/}"
                     break
@@ -539,6 +541,10 @@ function _set_scripts {
     elif [ "${_BUILDSYS}" = deno ] ; then
         _BUILDREQUIRES+=" deno"
         _BUILDMAKE="deno compile --output ${_NAME} --allow-read ${_BUILDFILE}"
+        _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_BUILDSYS}" = dub ] ; then
+        _BUILDREQUIRES+=" dub"
+        _BUILDMAKE="dub build"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = icon-theme ] ; then
         _NOARCH=true
