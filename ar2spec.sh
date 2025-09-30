@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.07.09"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.09.30"
 _ERROR=true
 _BUILDSET=""
 _COMPAT=false
@@ -100,7 +100,7 @@ function _unpack_archive {
         echo "ERROR! Unrecognized archive: ${_FILE}" >&2
         exit 1
     fi
-    [ "${_BASENAME/_/}" != "${_BASENAME}" ] && _URLSITE="sourceforge"
+    [ -z "${_BASENAME##*_*}" ] && _URLSITE="sourceforge"
 }
 
 function _set_attributes {
@@ -231,8 +231,8 @@ function _enter_directory {
         _NOARCH=true
     fi
     for f in COPYING* LICENSE* AUTHORS* NEWS* CHANGELOG* ChangeLog* README* TODO* THANKS* TRANSLATION* *.pdf *.rst *.md *.txt ; do
-        if [ -f "$f" -a "$f" != CMakeLists.txt -a "$f" != meson_options.txt -a "${_DOCS/ $f/}" = "${_DOCS}" ] ; then
-            [ "${f/ /}" = "$f" ] && _DOCS+=" $f" || _DOCS+=" \"$f\""
+        if [ -f "$f" -a "$f" != CMakeLists.txt -a "$f" != meson_options.txt -a -n "${_DOCS##* $f*}" ] ; then
+            [ -n "${f##* *}" ] && _DOCS+=" $f" || _DOCS+=" \"$f\""
         fi
     done
     if [ -n "${_DOCS}" ] ; then
@@ -291,7 +291,7 @@ function _enter_directory {
             _BUILDSYS="python-build"
         elif [ -f Cargo.toml ] ; then
             _BUILDSYS="cargo"
-        elif [ -f main.go ] ; then
+        elif [ -f main.go -o -f go.mod ] ; then
             _BUILDSYS="golang"
         elif [ -f meson.build ] ; then
             _BUILDSYS="meson"
@@ -630,7 +630,7 @@ function _output_data {
         "${_COMPAT}" && echo -n '#'
         echo 'BuildArch: noarch'
     else
-        [ "${_RELEASE/.bin/}" != "${_RELEASE}" ] && echo '#ExclusiveArch: x86_64'
+        [ -z "${_RELEASE##*.bin*}" ] && echo '#ExclusiveArch: x86_64'
     fi
     echo
     echo '%description'
@@ -669,9 +669,9 @@ function _output_data {
         [ "${_BUILDSYS}" = configure ] && echo "cp -f /usr/lib/rpm/redhat/config.* `dirname ./${_BUILDFILE}`"
         "${_WITHCXX}" && _CFLAGS+=" ${_CXXFLAGS}"
         [ "${_BUILDSYS}" = cmake ] && echo -e "rm -f CMakeCache.txt\nsed -i 's|-Wall|${_CFLAGS}|' \`find . -type f -name CMakeLists.txt\`"
-        [ "${_BUILDCONF/\/configure/}" != "${_BUILDCONF}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`"
+        [ -z "${_BUILDCONF##*/configure*}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`"
         [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
-        [ "${_BUILDMAKE/make/}" != "${_BUILDMAKE}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`"
+        [ -z "${_BUILDMAKE##*make*}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`"
     else
         [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
     fi
