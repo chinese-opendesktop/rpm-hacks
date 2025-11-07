@@ -1,7 +1,8 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.09.30"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.11.07"
 _ERROR=true
 _BUILDSET=""
+_BUILDSYS=""
 _COMPAT=false
 while [ -n "$1" ] ; do
     _ERROR=false
@@ -17,6 +18,10 @@ while [ -n "$1" ] ; do
         shift
         _BUILDSET="$1"
         [ -z "${_BUILDSET}" ] && _ERROR=true
+    elif [ "$1" = '-b' -o "$1" = '--buildsys' ] ; then
+        shift
+        _BUILDSYS="$1"
+        [ -z "${_BUILDSYS}" ] && _ERROR=true
     elif [ "$1" = '-C' -o "$1" = '--compat' ] ; then
         _COMPAT=true
     elif [ -z "${_FILE}" -a -f "$1" ] ; then
@@ -30,7 +35,12 @@ done
 if "${_ERROR}" ; then
     echo "AR2SPEC: Generating .spec file from software archive" >&2
     echo "${_COPYLEFT}" >&2
-    echo "Usage: $(basename $0) [-n|--name PKGNAME] [-p|--packager 'FULLNAME <EMAIL>'] [-s|--set SETTINGS] [-C|--compat] ARCHIVE" >&2
+    echo "Usage: $(basename $0) [OPTIONS] ARCHIVE" >&2
+    echo -e "  -n, --name PKGNAME\t\t\tSpecify the name of package" >&2
+    echo -e "  -p, --packager 'FULLNAME <EMAIL>'\tSpecify the info of packager" >&2
+    echo -e "  -s, --set SETTINGS\t\t\tSpecify extra settings for building" >&2
+    echo -e "  -b, --buildsys BUILDSYS\t\tForce use the build-system" >&2
+    echo -e "  -C, --compat\t\t\t\tSet compatible building" >&2
     exit 1
 fi
 
@@ -51,7 +61,6 @@ function _initial_variables {
     _DESCRIPTION="No description."
     _SETUP="-q"
     _BUILDFILE=""
-    _BUILDSYS=""
     _SUBDIR=""
     _CFLAGS="-DLINUX -Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
     _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
@@ -259,8 +268,6 @@ function _enter_directory {
             _BUILDSYS="bootstrap"
         elif [ -f bootstrap.sh ] ; then
             _BUILDSYS="bootstrap.sh"
-        elif [ -f CMakeLists.txt ] ; then
-            _BUILDSYS="cmake"
         elif [ -f autogen.sh ] ; then
             _BUILDSYS="autogen.sh"
         elif [ -f configure.ac -o -f configure.in ] ; then
@@ -268,6 +275,8 @@ function _enter_directory {
         elif [ -f configure ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -name 'config.guess' -print -quit)"
             _BUILDSYS="configure"
+        elif [ -f CMakeLists.txt ] ; then
+            _BUILDSYS="cmake"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.pro' -print -quit)" ] ; then
             _BUILDSYS="qmake5"
             grep -qsi qt4 * && _BUILDSYS="qmake4"
@@ -361,19 +370,21 @@ function _enter_directory {
             _BUILDSYS="filesystem"
         fi
     }
-    _check_buildsys
     if [ -z "${_BUILDSYS}" ] ; then
-        for d in "${_NAME}"/ [Ss]rc*/ [Ss]ource*/ [Ll]inux*/ */ ; do
-            if [ -d "$d" ] ; then
-                pushd "$d" > /dev/null
-                _check_buildsys
-                popd > /dev/null
-                if [ -n "${_BUILDSYS}" ] ; then
-                    _SUBDIR="${d%/}"
-                    break
+        _check_buildsys
+        if [ -z "${_BUILDSYS}" ] ; then
+            for d in "${_NAME}"/ [Ss]rc*/ [Ss]ource*/ [Ll]inux*/ */ ; do
+                if [ -d "$d" ] ; then
+                    pushd "$d" > /dev/null
+                    _check_buildsys
+                    popd > /dev/null
+                    if [ -n "${_BUILDSYS}" ] ; then
+                        _SUBDIR="${d%/}"
+                        break
+                    fi
                 fi
-            fi
-        done
+            done
+        fi
     fi
     _BUILDFILE=${_BUILDFILE#./}
     popd > /dev/null
@@ -618,7 +629,14 @@ function _output_data {
     "${_COMPAT}" || echo '%undefine _auto_set_build_flags'
     echo
     echo 'Summary:' "${_SUMMARY}"
-    echo 'Name:' "${_NAME}"
+    echo -n 'Name:' "${_NAME}"
+#    if [ -n "${_BUILDSYS}" -a -z "${_BUILDSYS##*-theme}" -a -n "${_NAME##*-theme}" ] ; then
+#        echo "-${_BUILDSYS}"
+#    elif [ "${_BUILDSYS}" = fonts -a -n "${_NAME##*-fonts}" ] ; then
+#        echo "-${_BUILDSYS}"
+#    else
+        echo
+#    fi
     echo 'Version:' "${_VERSION}"
     echo 'Release:' "${_RELEASE}"
     echo 'License:' "${_LICENSE}"
