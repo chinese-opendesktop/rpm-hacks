@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025.11.07"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025-11-14"
 _ERROR=true
 _BUILDSET=""
 _BUILDSYS=""
@@ -39,7 +39,7 @@ if "${_ERROR}" ; then
     echo -e "  -n, --name PKGNAME\t\t\tSpecify the name of package" >&2
     echo -e "  -p, --packager 'FULLNAME <EMAIL>'\tSpecify the info of packager" >&2
     echo -e "  -s, --set SETTINGS\t\t\tSpecify extra settings for building" >&2
-    echo -e "  -b, --buildsys BUILDSYS\t\tForce use the build-system" >&2
+    echo -e "  -b, --buildsys BUILDSYS\t\tForce to use this build-system" >&2
     echo -e "  -C, --compat\t\t\t\tSet compatible building" >&2
     exit 1
 fi
@@ -63,7 +63,7 @@ function _initial_variables {
     _BUILDFILE=""
     _SUBDIR=""
     _CFLAGS="-DLINUX -Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
-    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -I/usr/include/qt5 -I/usr/include/qt5/QtWidgets"
+    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -I/usr/include/qt6 -I/usr/include/qt6/QtWidgets"
     _BUILDCONF=""
     _BUILDMAKE="false"
     _INSTALL="false"
@@ -278,9 +278,9 @@ function _enter_directory {
         elif [ -f CMakeLists.txt ] ; then
             _BUILDSYS="cmake"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.pro' -print -quit)" ] ; then
-            _BUILDSYS="qmake5"
+            _BUILDSYS="qmake6"
             grep -qsi qt4 * && _BUILDSYS="qmake4"
-            grep -qsi qt6 * && _BUILDSYS="qmake6"
+            grep -qsi qt5 * && _BUILDSYS="qmake5"
         elif [ -f Imakefile ] ; then
             _BUILDSYS="imake"
         elif [ -f config.sh ] ; then
@@ -423,18 +423,18 @@ function _set_scripts {
         _INSTALL="#cd build;#{make_install}\n%{cmake_install}"
     elif [ "${_BUILDSYS}" = qmake6 ] ; then
         _BUILDREQUIRES+=" qt6-qtbase-devel"
-        _CXXFLAGS=${_CXXFLAGS//qt5/qt6}
         "${_COMPAT}" && _BUILDCONF="qmake6 -recursive||:" || _BUILDCONF="%{qmake_qt6}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_BUILDSYS}" = qmake5 ] ; then
         _BUILDREQUIRES+=" qt5-qtbase-devel"
+        _CXXFLAGS=${_CXXFLAGS//qt6/qt5}
         "${_COMPAT}" && _BUILDCONF="qmake-qt5 -recursive||:" || _BUILDCONF="%{qmake_qt5}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
     elif [ "${_BUILDSYS}" = qmake4 ] ; then
         _BUILDREQUIRES+=" qt4-devel"
-        _CXXFLAGS=${_CXXFLAGS/ -I\/usr\/include\/qt5 -I\/usr\/include\/qt5\/QtWidgets/}
+        _CXXFLAGS=${_CXXFLAGS/ -I\/usr\/include\/Qt -I\/usr\/include\/QtCore -I\/usr\/include\/QtGui -I\/usr\/include\/QtNetwork}
         "${_COMPAT}" && _BUILDCONF="qmake-qt4 -recursive||:" || _BUILDCONF="%{qmake_qt4}"
         "${_COMPAT}" && _BUILDMAKE="make -j1" || _BUILDMAKE="%{make_build}"
         _INSTALL="%{make_install}"
@@ -686,10 +686,10 @@ function _output_data {
         "${_WITHCXX}" && echo "export CXXFLAGS=\${CXXFLAGS/-Werror=format-security/} CXXFLAGS+=' ${_CXXFLAGS}' CPPFLAGS+=' ${_CXXFLAGS}'"
         [ "${_BUILDSYS}" = configure ] && echo "cp -f /usr/lib/rpm/redhat/config.* `dirname ./${_BUILDFILE}`"
         "${_WITHCXX}" && _CFLAGS+=" ${_CXXFLAGS}"
-        [ "${_BUILDSYS}" = cmake ] && echo -e "rm -f CMakeCache.txt\nsed -i 's|-Wall|${_CFLAGS}|' \`find . -type f -name CMakeLists.txt\`"
-        [ -z "${_BUILDCONF##*/configure*}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`"
+        [ "${_BUILDSYS}" = cmake ] && echo -e "rm -f CMakeCache.txt\nsed -i 's|-Wall|${_CFLAGS}|' \`find . -type f -name CMakeLists.txt\`||:"
+        [ -z "${_BUILDCONF##*/configure*}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`||:"
         [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
-        [ -z "${_BUILDMAKE##*make*}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`"
+        [ -z "${_BUILDMAKE##*make*}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`||:"
     else
         [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
     fi
