@@ -1,8 +1,8 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025-11-14"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025-12-05"
 _ERROR=true
 _BUILDSET=""
-_BUILDSYS=""
+_FORCESYS=""
 _COMPAT=false
 while [ -n "$1" ] ; do
     _ERROR=false
@@ -20,8 +20,8 @@ while [ -n "$1" ] ; do
         [ -z "${_BUILDSET}" ] && _ERROR=true
     elif [ "$1" = '-b' -o "$1" = '--buildsys' ] ; then
         shift
-        _BUILDSYS="$1"
-        [ -z "${_BUILDSYS}" ] && _ERROR=true
+        _FORCESYS="$1"
+        [ -z "${_FORCESYS}" ] && _ERROR=true
     elif [ "$1" = '-C' -o "$1" = '--compat' ] ; then
         _COMPAT=true
     elif [ -z "${_FILE}" -a -f "$1" ] ; then
@@ -60,6 +60,7 @@ function _initial_variables {
     _WITHCXX=false
     _DESCRIPTION="No description."
     _SETUP="-q"
+    _BUILDSYS=""
     _BUILDFILE=""
     _SUBDIR=""
     _CFLAGS="-DLINUX -Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
@@ -370,22 +371,21 @@ function _enter_directory {
             _BUILDSYS="filesystem"
         fi
     }
+    _check_buildsys
     if [ -z "${_BUILDSYS}" ] ; then
-        _check_buildsys
-        if [ -z "${_BUILDSYS}" ] ; then
-            for d in "${_NAME}"/ [Ss]rc*/ [Ss]ource*/ [Ll]inux*/ */ ; do
-                if [ -d "$d" ] ; then
-                    pushd "$d" > /dev/null
-                    _check_buildsys
-                    popd > /dev/null
-                    if [ -n "${_BUILDSYS}" ] ; then
-                        _SUBDIR="${d%/}"
-                        break
-                    fi
+        for d in "${_NAME}"/ [Ss]rc*/ [Ss]ource*/ [Ll]inux*/ */ ; do
+            if [ -d "$d" ] ; then
+                pushd "$d" > /dev/null
+                _check_buildsys
+                popd > /dev/null
+                if [ -n "${_BUILDSYS}" ] ; then
+                    _SUBDIR="${d%/}"
+                    break
                 fi
-            done
-        fi
+            fi
+        done
     fi
+    [ -n "${_FORCESYS}" ] && _BUILDSYS=${_FORCESYS}
     _BUILDFILE=${_BUILDFILE#./}
     popd > /dev/null
 }
