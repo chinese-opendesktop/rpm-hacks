@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025-12-05"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025-12-17"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
@@ -687,9 +687,11 @@ function _output_data {
         [ "${_BUILDSYS}" = configure ] && echo "cp -f /usr/lib/rpm/redhat/config.* `dirname ./${_BUILDFILE}`"
         "${_WITHCXX}" && _CFLAGS+=" ${_CXXFLAGS}"
         [ "${_BUILDSYS}" = cmake ] && echo -e "rm -f CMakeCache.txt\nsed -i 's|-Wall|${_CFLAGS}|' \`find . -type f -name CMakeLists.txt\`||:"
-        [ -z "${_BUILDCONF##*/configure*}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`||:"
-        [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
-        [ -z "${_BUILDMAKE##*make*}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`||:"
+        if [ -n "${_BUILDCONF}" ] ; then
+            [ -z "${_BUILDCONF##*/configure*}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name 'configure*'\`||:"
+            echo -e "${_BUILDCONF}"
+        fi
+        [ -n "${_BUILDMAKE}" -a -z "${_BUILDMAKE##*make*}" ] && echo "sed -i -e 's|-Wall|${_CFLAGS}|' -e 's|-Werror[=a-z\-]* | |g' \`find . -type f -name '[Mm]akefile*'\`||:"
     else
         [ -n "${_BUILDCONF}" ] && echo -e "${_BUILDCONF}"
     fi
