@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2025-12-17"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-01-14"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
@@ -548,7 +548,8 @@ function _set_scripts {
         _NOARCH=true
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="mkdir -p %{buildroot}%{nodejs_sitelib}/%{name} %{buildroot}%{_bindir}\ncp -a * %{buildroot}%{nodejs_sitelib}/%{name}"
-        _INSTALL+="\nln -s %{nodejs_sitelib}/%{name}/${_BUILDFILE} %{buildroot}%{_bindir}/%{name}\nrm -f %{buildroot}%{nodejs_sitelib}/%{name}/{*.md,LICENSE}"
+        [ -n "${_BUILDFILE}" ] && _INSTALL+="\nln -s %{nodejs_sitelib}/%{name}/${_BUILDFILE} %{buildroot}%{_bindir}/%{name}"
+        _INSTALL+="\nrm -f %{buildroot}%{nodejs_sitelib}/%{name}/{*.md,LICENSE}"
     elif [ "${_BUILDSYS}" = deno ] ; then
         _BUILDREQUIRES+=" deno"
         _BUILDMAKE="deno compile --output ${_NAME} --allow-read ${_BUILDFILE}"
