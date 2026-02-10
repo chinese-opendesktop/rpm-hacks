@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-01-14"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-02-05"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
@@ -301,8 +301,10 @@ function _enter_directory {
             _BUILDSYS="python-build"
         elif [ -f Cargo.toml ] ; then
             _BUILDSYS="cargo"
-        elif [ -f main.go -o -f go.mod ] ; then
+        elif [ -f go.mod ] ; then
             _BUILDSYS="golang"
+        elif [ -f main.go ] ; then
+            _BUILDSYS="goinit"
         elif [ -f meson.build ] ; then
             _BUILDSYS="meson"
         elif [ -f build.ninja ] ; then
@@ -468,6 +470,12 @@ function _set_scripts {
         _INSTALL="cargo install --root=%{buildroot}%{_prefix} --path=.||install -Dm755 target/release/%{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = golang ] ; then
         _BUILDREQUIRES+=" golang"
+        "${_COMPAT}" && _BUILDCONF="go mod tidy"
+        _BUILDMAKE="go build -x"
+        _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_BUILDSYS}" = goinit ] ; then
+        _BUILDREQUIRES+=" golang"
+        _BUILDCONF="go mod init %{name}"
         _BUILDMAKE="go build -x"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = meson ] ; then
@@ -538,7 +546,8 @@ function _set_scripts {
     elif [ "${_BUILDSYS}" = perl ] ; then
         _BUILDREQUIRES+=" perl-devel"
         _NOARCH=true
-        _BUILDMAKE="perl Makefile.PL INSTALLDIRS=vendor\n#%{make_build}\nmake -j1"
+        _BUILDCONF="perl Makefile.PL INSTALLDIRS=vendor"
+        _BUILDMAKE="make -j1"
         _INSTALL="%{make_install}"
     elif [ "${_BUILDSYS}" = cc ] ; then
         "${_COMPAT}" && _BUILDMAKE="make %{name}" || _BUILDMAKE="g++ *.c* -o %{name}"
