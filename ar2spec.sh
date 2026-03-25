@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-02-05"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-03-25"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
@@ -347,7 +347,8 @@ function _enter_directory {
             [ -d 16x16 ] && _BUILDSYS="icon-theme" || _BUILDSYS="desktop-theme"
         elif [ -f metacity-theme-1.xml ] ; then
             _BUILDSYS="metacity-theme"
-        elif [ -f "$(find . -maxdepth 1 -type f -name '*.tt?' -print -quit)" ] ; then
+        elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/.*\.\(ttf\|ttc\|otf\)' -print -quit)" ] ; then
+            _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/.*\.\(ttf\|ttc\|otf\)' -print)"
             _BUILDSYS="fonts"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.jar' -print -quit)" ] ; then
             _BUILDSYS="jar"
@@ -586,7 +587,7 @@ function _set_scripts {
     elif [ "${_BUILDSYS}" = fonts ] ; then
         _NOARCH=true
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
-        _INSTALL="install -d %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}\ncp *.tt? %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}"
+        _INSTALL="install -d %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}\ncp ${_BUILDFILE} %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}"
     elif [ "${_BUILDSYS}" = jar ] ; then
         _RELEASE+=".bin"
         _NOARCH=true
