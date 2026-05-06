@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-03-25"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-05-06"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
@@ -341,7 +341,7 @@ function _enter_directory {
         elif [ -f deno.json ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|executable\).*\.ts' -print -quit)"
             _BUILDSYS="deno"
-        elif [ -f dub.json ] ; then
+        elif [ -f dub.json -o -f dub.sdl ] ; then
             _BUILDSYS="dub"
         elif [ -f index.theme ] ; then
             [ -d 16x16 ] && _BUILDSYS="icon-theme" || _BUILDSYS="desktop-theme"
