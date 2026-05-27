@@ -1,9 +1,10 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-05-06"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-05-25"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
 _COMPAT=false
+_NOTMAKE=false
 while [ -n "$1" ] ; do
     _ERROR=false
     if [ "$1" = '-n' -o "$1" = '--name' ] ; then
@@ -24,6 +25,8 @@ while [ -n "$1" ] ; do
         [ -z "${_FORCESYS}" ] && _ERROR=true
     elif [ "$1" = '-C' -o "$1" = '--compat' ] ; then
         _COMPAT=true
+    elif [ "$1" = '-N' -o "$1" = '--notmake' ] ; then
+        _NOTMAKE=true
     elif [ -z "${_FILE}" -a -f "$1" ] ; then
         _FILE="$1"
     else
@@ -40,6 +43,7 @@ if "${_ERROR}" ; then
     echo -e "  -p, --packager 'FULLNAME <EMAIL>'\tSpecify the info of packager" >&2
     echo -e "  -s, --set SETTINGS\t\t\tSpecify extra settings for building" >&2
     echo -e "  -b, --buildsys BUILDSYS\t\tForce to use this build-system" >&2
+    echo -e "  -N, --notmake\t\t\t\tDon't use the exist Makefile" >&2
     echo -e "  -C, --compat\t\t\t\tSet compatible building" >&2
     exit 1
 fi
@@ -286,7 +290,7 @@ function _enter_directory {
             _BUILDSYS="imake"
         elif [ -f config.sh ] ; then
             _BUILDSYS="config.sh"
-        elif [ -f Makefile -o -f makefile -o -f GNUmakefile ] ; then
+        elif [ \( -f Makefile -o -f makefile -o -f GNUmakefile \) -a "${_NOTMAKE}" = false ] ; then
             _BUILDSYS="make"
         elif [ -f MAKEFILE ] ; then
             [ -n "${_BUILDSET}" ] && _BUILDSET+="\n"
@@ -587,7 +591,7 @@ function _set_scripts {
     elif [ "${_BUILDSYS}" = fonts ] ; then
         _NOARCH=true
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
-        _INSTALL="install -d %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}\ncp ${_BUILDFILE} %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}"
+        _INSTALL="install -d %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}\ncp ${_BUILDFILE//$'\n'/ } %{buildroot}%{_datadir}/fonts/${_SUBDIR:-$_NAME}"
     elif [ "${_BUILDSYS}" = jar ] ; then
         _RELEASE+=".bin"
         _NOARCH=true
