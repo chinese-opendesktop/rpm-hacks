@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-05-25"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-06-08"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
@@ -67,8 +67,8 @@ function _initial_variables {
     _BUILDSYS=""
     _BUILDFILE=""
     _SUBDIR=""
-    _CFLAGS="-DLINUX -Wno-error -fPIC -fPIE -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
-    _CXXFLAGS="-Wno-error -fPIC -fPIE -fpermissive -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -I/usr/include/qt6 -I/usr/include/qt6/QtWidgets"
+    _CFLAGS="-DLINUX -Wno-error -fPIC -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
+    _CXXFLAGS="-Wno-error -fPIC -fpermissive -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -I/usr/include/qt6 -I/usr/include/qt6/QtWidgets"
     _BUILDCONF=""
     _BUILDMAKE="false"
     _INSTALL="false"
@@ -641,7 +641,7 @@ function _output_data {
     echo '%global __spec_install_post %{nil}'
     echo '%undefine _debugsource_packages'
     echo '%undefine _missing_build_ids_terminate_build'
-    "${_COMPAT}" || echo '%undefine _auto_set_build_flags'
+    "${_NOTMAKE}" && echo '%undefine _auto_set_build_flags'
     echo
     echo 'Summary:' "${_SUMMARY}"
     echo -n 'Name:' "${_NAME}"
