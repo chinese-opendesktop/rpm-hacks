@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-06-08"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-06-26"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
@@ -154,11 +154,11 @@ function _set_attributes {
     _SRCNAME=${_SRCNAME/${_NAME}/%\{name\}}
     _SRCNAME=${_SRCNAME/${_VERSION}/%\{version\}}
     function _url_github {
-#        _URL=$(curl -s --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 'https://github.com/[-0-9A-Za-z]*/'${_NAME}'&quot;'|sed 's|.*\(https://github.com/[-0-9A-Za-z]*/'${_NAME}'\).*|\1|i')
-        _URL=$(curl -s --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 '/<em>'${_NAME}'</em>","hl_trunc_description'|sed 's|/<em>[-0-9A-Za-z_]*</em>","hl_trunc_description|\n|g'|grep -m1 hl_name|sed 's|.*hl_name":"||')
+#        _URL=$(curl -s -m 5 --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 'https://github.com/[-0-9A-Za-z]*/'${_NAME}'&quot;'|sed 's|.*\(https://github.com/[-0-9A-Za-z]*/'${_NAME}'\).*|\1|i')
+        _URL=$(curl -s -m 5 --retry 1 'https://github.com/search?q='${_NAME}'&type=repositories'|grep -im1 '/<em>'${_NAME}'</em>","hl_trunc_description'|sed 's|/<em>[-0-9A-Za-z_]*</em>","hl_trunc_description|\n|g'|grep -m1 hl_name|sed 's|.*hl_name":"||')
         if [ -n "${_URL}" ] ; then
             _URL="https://github.com/"${_URL}"/"${_NAME}
-            _SUMMARY=$(curl -s --retry 1 "${_URL}"|grep -im1 '<title>GitHub'|sed 's|.*<title>GitHub - .*/'${_NAME}': \([^.]*\).*</title>|\1|i')
+            _SUMMARY=$(curl -s -m 5 --retry 1 "${_URL}"|grep -im1 '<title>GitHub'|sed 's|.*<title>GitHub - .*/'${_NAME}': \([^.]*\).*</title>|\1|i')
             if [ "${_VERSION}" = master -o "${_VERSION}" = main ] ; then
                 _SOURCE="${_URL}/archive/refs/heads/${_VERSION}.zip#/${_SRCNAME}"
                 _RELEASE="0"
@@ -176,7 +176,7 @@ function _set_attributes {
     function _url_sourceforge {
         if wget -q --spider "https://sourceforge.net/projects/${_NAME}" ; then
             _URL="https://sourceforge.net/projects/${_NAME}"
-            _SUMMARY=$(curl -s --retry 1 "${_URL}/"|grep -im1 '<meta name="description" content="Download'|sed 's|<meta name="description" content="Download.*for free\.[ \r]*||'|sed 's|" />||'|sed 's|\..*||')
+            _SUMMARY=$(curl -s -m 5 --retry 1 "${_URL}/"|grep -im1 '<meta name="description" content="Download'|sed 's|<meta name="description" content="Download.*for free\.[ \r]*||'|sed 's|" />||'|sed 's|\..*||')
             if wget -q --spider "${_URL}/files/${_SRCNAME}" ; then
                 _SOURCE="${_URL}/files/${_SRCNAME}"
             elif wget -q --spider "${_URL}/files/${_NAME}-${_VERSION}/${_SRCNAME}" ; then
@@ -191,7 +191,7 @@ function _set_attributes {
     function _url_launchpad {
         if wget -q --spider "https://launchpad.net/${_NAME}" ; then
             _URL="https://launchpad.net/${_NAME}"
-            _SUMMARY=$(curl -s --retry 1 "${_URL}"|grep -im1 '<div class="summary"><p>'|sed 's|.*<div class="summary"><p>||'|sed 's|</p></div>||'|sed 's|\.$||')
+            _SUMMARY=$(curl -s -m 5 --retry 1 "${_URL}"|grep -im1 '<div class="summary"><p>'|sed 's|.*<div class="summary"><p>||'|sed 's|</p></div>||'|sed 's|\.$||')
             if wget -q --spider "${_URL}/${_VERSION}/+download/${_SRCNAME}" ; then
                 _SOURCE="${_URL}/%{version}/+download/${_SRCNAME}"
             elif wget -q --spider "${_URL}/trunk/${_VERSION}/+download/${_SRCNAME}" ; then
