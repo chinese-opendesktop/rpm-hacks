@@ -1,10 +1,11 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-06-26"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-08-26"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
 _COMPAT=false
 _NOTMAKE=false
+_NOURL=false
 while [ -n "$1" ] ; do
     _ERROR=false
     if [ "$1" = '-n' -o "$1" = '--name' ] ; then
@@ -25,8 +26,10 @@ while [ -n "$1" ] ; do
         [ -z "${_FORCESYS}" ] && _ERROR=true
     elif [ "$1" = '-C' -o "$1" = '--compat' ] ; then
         _COMPAT=true
-    elif [ "$1" = '-N' -o "$1" = '--notmake' ] ; then
+    elif [ "$1" = '-M' -o "$1" = '--notmake' ] ; then
         _NOTMAKE=true
+    elif [ "$1" = '-U' -o "$1" = '--nourl' ] ; then
+        _NOURL=true
     elif [ -z "${_FILE}" -a -f "$1" ] ; then
         _FILE="$1"
     else
@@ -39,12 +42,13 @@ if "${_ERROR}" ; then
     echo "AR2SPEC: Generating .spec file from software archive" >&2
     echo "${_COPYLEFT}" >&2
     echo "Usage: $(basename $0) [OPTIONS] ARCHIVE" >&2
+    echo -e "  -b, --buildsys BUILDSYS\t\tForce to use this build-system" >&2
+    echo -e "  -C, --compat\t\t\t\tSet compatible building" >&2
+    echo -e "  -M, --notmake\t\t\t\tDon't use the exist Makefile" >&2
     echo -e "  -n, --name PKGNAME\t\t\tSpecify the name of package" >&2
     echo -e "  -p, --packager 'FULLNAME <EMAIL>'\tSpecify the info of packager" >&2
     echo -e "  -s, --set SETTINGS\t\t\tSpecify extra settings for building" >&2
-    echo -e "  -b, --buildsys BUILDSYS\t\tForce to use this build-system" >&2
-    echo -e "  -N, --notmake\t\t\t\tDon't use the exist Makefile" >&2
-    echo -e "  -C, --compat\t\t\t\tSet compatible building" >&2
+    echo -e "  -U, --nourl\t\t\t\tDon't detect the URL" >&2
     exit 1
 fi
 
@@ -203,6 +207,7 @@ function _set_attributes {
             fi
         fi
     }
+    "${_NOURL}" && _URLSITE=""
     if [ "${_URLSITE}" = github ] ; then
         _url_github
         [ -z "${_URL}" ] && _url_sourceforge
