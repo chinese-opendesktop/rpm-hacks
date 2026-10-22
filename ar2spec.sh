@@ -1,11 +1,10 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-08-26"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-10-22"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
 _COMPAT=false
-_NOTMAKE=false
-_NOURL=false
+_MAKENOT=false
 while [ -n "$1" ] ; do
     _ERROR=false
     if [ "$1" = '-n' -o "$1" = '--name' ] ; then
@@ -26,10 +25,8 @@ while [ -n "$1" ] ; do
         [ -z "${_FORCESYS}" ] && _ERROR=true
     elif [ "$1" = '-C' -o "$1" = '--compat' ] ; then
         _COMPAT=true
-    elif [ "$1" = '-M' -o "$1" = '--notmake' ] ; then
-        _NOTMAKE=true
-    elif [ "$1" = '-U' -o "$1" = '--nourl' ] ; then
-        _NOURL=true
+    elif [ "$1" = '-M' -o "$1" = '--makenot' ] ; then
+        _MAKENOT=true
     elif [ -z "${_FILE}" -a -f "$1" ] ; then
         _FILE="$1"
     else
@@ -44,11 +41,10 @@ if "${_ERROR}" ; then
     echo "Usage: $(basename $0) [OPTIONS] ARCHIVE" >&2
     echo -e "  -b, --buildsys BUILDSYS\t\tForce to use this build-system" >&2
     echo -e "  -C, --compat\t\t\t\tSet compatible building" >&2
-    echo -e "  -M, --notmake\t\t\t\tDon't use the exist Makefile" >&2
+    echo -e "  -M, --makenot\t\t\t\tDon't use the exist Makefile" >&2
     echo -e "  -n, --name PKGNAME\t\t\tSpecify the name of package" >&2
     echo -e "  -p, --packager 'FULLNAME <EMAIL>'\tSpecify the info of packager" >&2
     echo -e "  -s, --set SETTINGS\t\t\tSpecify extra settings for building" >&2
-    echo -e "  -U, --nourl\t\t\t\tDon't detect the URL" >&2
     exit 1
 fi
 
@@ -72,7 +68,7 @@ function _initial_variables {
     _BUILDFILE=""
     _SUBDIR=""
     _CFLAGS="-DLINUX -Wno-error -fPIC -Wno-format-security -fno-strict-aliasing -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -pipe -lm -lX11 -I/usr/include/tirpc -ltirpc"
-    _CXXFLAGS="-Wno-error -fPIC -fpermissive -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-int -I/usr/include/qt6 -I/usr/include/qt6/QtWidgets"
+    _CXXFLAGS="-Wno-error -fPIC -fpermissive -Wno-format-security -fno-strict-aliasing -Wno-range-loop-construct -Wl,--allow-multiple-definition -Wno-narrowing -I/usr/include/qt6 -I/usr/include/qt6/QtWidgets"
     _BUILDCONF=""
     _BUILDMAKE="false"
     _INSTALL="false"
@@ -207,7 +203,7 @@ function _set_attributes {
             fi
         fi
     }
-    "${_NOURL}" && _URLSITE=""
+_URLSITE=""
     if [ "${_URLSITE}" = github ] ; then
         _url_github
         [ -z "${_URL}" ] && _url_sourceforge
@@ -241,7 +237,7 @@ function _enter_directory {
     fi
     _FINDFILE=$(find . -type f -name '*.spec' -print -quit)
     [ -n "${_FINDFILE}" ] && _COMMENT="See ${_FINDFILE} in Source."
-    _FINDFILE=$(find . -type f -iregex '.*\.\(c\|cc\|cpp\|c\+\+\|cxx\|cs\|go\|hs\|pas\|swift\|adb\|f\|f77\|f90\|f95\|rs\|vala\|ml\)' -print -quit)
+    _FINDFILE=$(find . -type f -iregex '.*\.\(c\|cc\|cpp\|c\+\+\|cxx\|cs\|go\|hs\|pas\|swift\|adb\|f\|f77\|f90\|f95\|rs\|vala\|ml\|nim\)' -print -quit)
     if [ -n "${_FINDFILE}" ] ; then
         _NOARCH=false
         _FINDFILE=$(find . -type f -iregex '.*\.\(cc\|cpp\|c\+\+\|cxx\)' -print -quit)
@@ -295,7 +291,7 @@ function _enter_directory {
             _BUILDSYS="imake"
         elif [ -f config.sh ] ; then
             _BUILDSYS="config.sh"
-        elif [ \( -f Makefile -o -f makefile -o -f GNUmakefile \) -a "${_NOTMAKE}" = false ] ; then
+        elif [ \( -f Makefile -o -f makefile -o -f GNUmakefile \) -a "${_MAKENOT}" = false ] ; then
             _BUILDSYS="make"
         elif [ -f MAKEFILE ] ; then
             [ -n "${_BUILDSET}" ] && _BUILDSET+="\n"
@@ -340,13 +336,12 @@ function _enter_directory {
             _BUILDSYS="ghc"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.nimble' -print -quit)" ] ; then
             _BUILDSYS="nimble"
+        elif [ -f config.nims ] ; then
+            _BUILDSYS="nim"
         elif [ -f Makefile.PL ] ; then
             _BUILDSYS="perl"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(c\|cc\|cpp\|c\+\+\|cxx\)' -print -quit)" ] ; then
             _BUILDSYS="cc"
-        elif [ -f package.json ] ; then
-            _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|index\).*\.js' -print -quit)"
-            _BUILDSYS="nodejs"
         elif [ -f deno.json ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|executable\).*\.ts' -print -quit)"
             _BUILDSYS="deno"
@@ -371,6 +366,9 @@ function _enter_directory {
             _BUILDSYS="dotnet-sln"
         elif [ -f build.zig ] ; then
             _BUILDSYS="zig"
+        elif [ -f package.json ] ; then
+            _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/\('${_NAME}'\|index\).*\.js' -print -quit)"
+            _BUILDSYS="nodejs"
         elif [ -f "$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)" ] ; then
             _BUILDFILE="$(find . -maxdepth 1 -type f -iregex '.*/'${_NAME}'\.\(py\|pl\|lua\|tcl\)' -print -quit)"
             _BUILDSYS="script"
@@ -553,6 +551,10 @@ function _set_scripts {
         _BUILDCONF="nimble setup"
         _BUILDMAKE="nimble build"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_BUILDSYS}" = nim ] ; then
+        _BUILDREQUIRES+=" nim"
+        _BUILDMAKE="nim compile build.nim*"
+        _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = perl ] ; then
         _BUILDREQUIRES+=" perl-devel"
         _NOARCH=true
@@ -562,13 +564,6 @@ function _set_scripts {
     elif [ "${_BUILDSYS}" = cc ] ; then
         "${_COMPAT}" && _BUILDMAKE="make %{name}" || _BUILDMAKE="g++ *.c* -o %{name}"
         _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
-    elif [ "${_BUILDSYS}" = nodejs ] ; then
-        _BUILDREQUIRES+=" nodejs-devel"
-        _NOARCH=true
-        _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
-        _INSTALL="mkdir -p %{buildroot}%{nodejs_sitelib}/%{name} %{buildroot}%{_bindir}\ncp -a * %{buildroot}%{nodejs_sitelib}/%{name}"
-        [ -n "${_BUILDFILE}" ] && _INSTALL+="\nln -s %{nodejs_sitelib}/%{name}/${_BUILDFILE} %{buildroot}%{_bindir}/%{name}"
-        _INSTALL+="\nrm -f %{buildroot}%{nodejs_sitelib}/%{name}/{*.md,LICENSE}"
     elif [ "${_BUILDSYS}" = deno ] ; then
         _BUILDREQUIRES+=" deno"
         _BUILDMAKE="deno compile --output ${_NAME} --allow-read ${_BUILDFILE}"
@@ -622,6 +617,13 @@ function _set_scripts {
         _BUILDREQUIRES+=" zig"
         _BUILDMAKE="zig build -Doptimize=ReleaseFast"
         _INSTALL="install -Dm755 zig-out/bin/%{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_BUILDSYS}" = nodejs ] ; then
+        _BUILDREQUIRES+=" nodejs-devel"
+        _NOARCH=true
+        _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
+        _INSTALL="mkdir -p %{buildroot}%{nodejs_sitelib}/%{name} %{buildroot}%{_bindir}\ncp -a * %{buildroot}%{nodejs_sitelib}/%{name}"
+        [ -n "${_BUILDFILE}" ] && _INSTALL+="\nln -s %{nodejs_sitelib}/%{name}/${_BUILDFILE} %{buildroot}%{_bindir}/%{name}"
+        _INSTALL+="\nrm -f %{buildroot}%{nodejs_sitelib}/%{name}/{*.md,LICENSE}"
     elif [ "${_BUILDSYS}" = script ] ; then
         _BUILDMAKE="#Disable build for buildsys: ${_BUILDSYS}"
         _INSTALL="install -Dm755 ${_BUILDFILE} %{buildroot}%{_datadir}/%{name}/${_BUILDFILE}"
@@ -646,7 +648,7 @@ function _output_data {
     echo '%global __spec_install_post %{nil}'
     echo '%undefine _debugsource_packages'
     echo '%undefine _missing_build_ids_terminate_build'
-    "${_NOTMAKE}" && echo '%undefine _auto_set_build_flags'
+    "${_MAKENOT}" && echo '%undefine _auto_set_build_flags'
     echo
     echo 'Summary:' "${_SUMMARY}"
     echo -n 'Name:' "${_NAME}"
