@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-10-22"
+_COPYLEFT="MIT License by Wei-Lun Chao <bluebat@member.fsf.org>, 2026-11-17"
 _ERROR=true
 _BUILDSET=""
 _FORCESYS=""
@@ -364,6 +364,8 @@ function _enter_directory {
             _BUILDSYS="dotnet-csproj"
         elif [ -f "$(find . -maxdepth 1 -type f -name '*.sln' -print -quit)" ] ; then
             _BUILDSYS="dotnet-sln"
+        elif [ -f "$(find . -maxdepth 1 -type f -name '*.cs' -print -quit)" ] ; then
+            _BUILDSYS="dotnet-cs"
         elif [ -f build.zig ] ; then
             _BUILDSYS="zig"
         elif [ -f package.json ] ; then
@@ -607,12 +609,16 @@ function _set_scripts {
         _INSTALL="install -d %{buildroot}%{_libdir}/fpc/%{name}\ncp -a * %{buildroot}%{_libdir}/fpc/%{name}"
     elif [ "${_BUILDSYS}" = dotnet-csproj ] ; then
         _BUILDREQUIRES+=" dotnet-host"
-        _BUILDMAKE="dotnet publish *.csproj -c Release --no-self-contained"
+        ${_COMPAT} && _BUILDMAKE="dotnet publish" || _BUILDMAKE="dotnet publish *.csproj -c Release --self-contained true"
         _INSTALL="install -Dm755 bin/Release/*/linux-x64/publish/%{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = dotnet-sln ] ; then
         _BUILDREQUIRES+=" dotnet-host"
-        _BUILDMAKE="dotnet build *.sln -c Release"
-        _INSTALL="install -Dm755 Bld/Drops/Release/Binaries/net8.0/%{name} %{buildroot}%{_bindir}/%{name}"
+        ${_COMPAT} && _BUILDMAKE="dotnet build" || _BUILDMAKE="dotnet build *.sln -c Release --self-contained true"
+        _INSTALL="install -Dm755 Bld/Drops/Release/Binaries/net*/%{name} %{buildroot}%{_bindir}/%{name}"
+    elif [ "${_BUILDSYS}" = dotnet-cs ] ; then
+        _BUILDREQUIRES+=" dotnet-host"
+        _BUILDMAKE="gmcs -platform:x64 -out:%{name} *.cs"
+        _INSTALL="install -Dm755 %{name} %{buildroot}%{_bindir}/%{name}"
     elif [ "${_BUILDSYS}" = zig ] ; then
         _BUILDREQUIRES+=" zig"
         _BUILDMAKE="zig build -Doptimize=ReleaseFast"
